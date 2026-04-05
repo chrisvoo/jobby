@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+.next/
+
+# Data (persisted locally, never committed)
+data/app.db
+data/uploads/resumes/*.pdf
+data/uploads/adapted/*.pdf
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
