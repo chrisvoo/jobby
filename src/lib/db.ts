@@ -1,8 +1,9 @@
 import { DuckDBInstance } from '@duckdb/node-api'
 import path from 'path'
 import fs from 'fs'
+import { readConfig } from './app-config'
 
-const DB_PATH = process.env.DUCKDB_PATH ?? path.join(process.cwd(), 'data', 'app.db')
+const DB_PATH = readConfig().duckdb_path
 
 // Survive Next.js hot-reload in development
 declare global {
@@ -42,8 +43,21 @@ async function initSchema(conn: Awaited<ReturnType<DuckDBInstance['connect']>>) 
   `)
 }
 
+// Migrations run once per process (not per request).
+// All statements must be idempotent (IF NOT EXISTS / IF EXISTS).
+// Add new ALTER TABLE statements here — never edit or remove old ones.
+let _migrationsRan = false
+async function runMigrations(conn: Awaited<ReturnType<DuckDBInstance['connect']>>) {
+  if (_migrationsRan) return
+  await conn.run(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS description TEXT`)
+  _migrationsRan = true
+}
+
 export async function getDb() {
-  if (global.__duckdb_conn) return global.__duckdb_conn
+  if (global.__duckdb_conn) {
+    await runMigrations(global.__duckdb_conn)
+    return global.__duckdb_conn
+  }
 
   const dir = path.dirname(DB_PATH)
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
@@ -52,6 +66,7 @@ export async function getDb() {
   const conn = await instance.connect()
 
   await initSchema(conn)
+  await runMigrations(conn)
 
   global.__duckdb_instance = instance
   global.__duckdb_conn = conn

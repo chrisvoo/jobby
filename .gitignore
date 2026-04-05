@@ -7,9 +7,8 @@ data/app.db
 data/uploads/resumes/*.pdf
 data/uploads/adapted/*.pdf
 
-# Environment
-.env
-.env.local
+# Configuration (contains machine-specific absolute paths)
+jobby.config.json
 
 # OS
 .DS_Store

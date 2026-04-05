@@ -13,8 +13,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="dark">
       <body>
         <Sidebar />
-        <main className="ml-60 min-h-screen">
-          <div className="max-w-6xl mx-auto px-8 py-8">{children}</div>
+        <main className="md:ml-60 min-h-screen pt-14 md:pt-0">
+          <div className="max-w-6xl mx-auto px-4 py-6 sm:px-8 sm:py-8">{children}</div>
         </main>
         <Toaster
           position="bottom-right"

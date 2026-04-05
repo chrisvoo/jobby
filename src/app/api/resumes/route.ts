@@ -3,11 +3,14 @@ import { randomUUID } from 'crypto'
 import path from 'path'
 import fs from 'fs'
 import { getDb, toISO } from '@/lib/db'
+import { readConfig } from '@/lib/app-config'
 import type { Resume } from '@/lib/types'
 
-const DATA_DIR = process.env.DUCKDB_PATH
-  ? path.dirname(process.env.DUCKDB_PATH)
-  : path.join(process.cwd(), 'data')
+// Always derive the upload directory from the same config that drives DuckDB,
+// so both the DB file and PDF uploads stay under the same root.
+function getDataDir() {
+  return path.dirname(readConfig().duckdb_path)
+}
 
 function rowToResume(row: Record<string, unknown>): Resume {
   return {
@@ -30,6 +33,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  let filePath: string | null = null
   try {
     const formData = await req.formData()
     const file = formData.get('file') as File | null
@@ -41,10 +45,12 @@ export async function POST(req: NextRequest) {
     }
 
     const id = randomUUID()
-    const resumesDir = path.join(DATA_DIR, 'uploads', 'resumes')
+    const resumesDir = path.join(getDataDir(), 'uploads', 'resumes')
     if (!fs.existsSync(resumesDir)) fs.mkdirSync(resumesDir, { recursive: true })
 
-    const filePath = path.join(resumesDir, `${id}.pdf`)
+    // Write the file first so we have the path ready for the DB row.
+    // If the DB insert below fails we clean it up in the catch block.
+    filePath = path.join(resumesDir, `${id}.pdf`)
     const buffer = Buffer.from(await file.arrayBuffer())
     fs.writeFileSync(filePath, buffer)
 
@@ -61,6 +67,11 @@ export async function POST(req: NextRequest) {
       { status: 201 },
     )
   } catch (err) {
+    // If the DB insert failed, remove the PDF we already wrote so there
+    // is no orphaned file on disk.
+    if (filePath && fs.existsSync(filePath)) {
+      try { fs.unlinkSync(filePath) } catch {}
+    }
     console.error(err)
     return NextResponse.json({ error: 'Failed to upload resume' }, { status: 500 })
   }

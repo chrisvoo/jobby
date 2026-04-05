@@ -12,6 +12,7 @@ function rowToJob(row: Record<string, unknown>): Job {
     status: String(row.status) as Job['status'],
     applied_at: toISO(row.applied_at),
     notes: row.notes ? String(row.notes) : null,
+    description: row.description ? String(row.description) : null,
     gross_annual_salary: parseSalary(row.gross_annual_salary),
     base_resume_id: row.base_resume_id ? String(row.base_resume_id) : null,
     resume_path: row.resume_path ? String(row.resume_path) : null,
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
     const appliedAt = body.applied_at ? `'${body.applied_at}'` : 'now()'
 
     await conn.run(`
-      INSERT INTO jobs (id, company, role, url, status, applied_at, notes, gross_annual_salary, base_resume_id)
+      INSERT INTO jobs (id, company, role, url, status, applied_at, notes, description, gross_annual_salary, base_resume_id)
       VALUES (
         '${id}',
         '${body.company.replace(/'/g, "''")}',
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
         '${body.status ?? 'applied'}',
         ${appliedAt},
         ${body.notes ? `'${body.notes.replace(/'/g, "''")}'` : 'NULL'},
+        ${body.description ? `'${body.description.replace(/'/g, "''")}'` : 'NULL'},
         ${salary},
         ${body.base_resume_id ? `'${body.base_resume_id}'` : 'NULL'}
       )

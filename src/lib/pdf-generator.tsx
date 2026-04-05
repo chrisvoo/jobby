@@ -8,30 +8,9 @@ import {
   renderToBuffer,
 } from '@react-pdf/renderer'
 
-export interface ResumeData {
-  name: string
-  email?: string
-  phone?: string
-  location?: string
-  linkedin?: string
-  website?: string
-  summary?: string
-  experience: Array<{
-    company: string
-    role: string
-    dates: string
-    location?: string
-    bullets: string[]
-  }>
-  education: Array<{
-    institution: string
-    degree: string
-    dates: string
-    details?: string
-  }>
-  skills: string[]
-  certifications?: string[]
-}
+import type { ResumeData } from '@/lib/types'
+
+export type { ResumeData }
 
 const BLACK = '#000000'
 const DARK = '#1a1a1a'
@@ -45,19 +24,20 @@ const s = StyleSheet.create({
     color: DARK,
     paddingHorizontal: 54,
     paddingVertical: 48,
-    lineHeight: 1.45,
+    lineHeight: 1.5,
   },
   // ── Header ──────────────────────────────────────────────────
   name: {
     fontFamily: 'Helvetica-Bold',
     fontSize: 20,
     color: BLACK,
-    marginBottom: 4,
+    marginBottom: 8,       // was 4 — breathing room under the large name
   },
   contactRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    columnGap: 12,
+    columnGap: 14,
+    rowGap: 2,             // keeps wrapping contact lines readable
     fontSize: 9,
     color: MID,
     marginBottom: 10,
@@ -66,7 +46,7 @@ const s = StyleSheet.create({
   headerRule: {
     borderBottomWidth: 1,
     borderBottomColor: DARK,
-    marginBottom: 10,
+    marginBottom: 6,       // sectionTitle.marginTop picks up the rest of the gap
   },
   // ── Section ─────────────────────────────────────────────────
   sectionTitle: {
@@ -77,41 +57,41 @@ const s = StyleSheet.create({
     color: DARK,
     borderBottomWidth: 0.5,
     borderBottomColor: RULE,
-    paddingBottom: 2,
-    marginBottom: 6,
-    marginTop: 10,
+    paddingBottom: 3,      // was 2
+    marginBottom: 8,       // was 6
+    marginTop: 16,         // was 10 — clear gap between sections
   },
   // ── Summary ─────────────────────────────────────────────────
-  summaryText: { fontSize: 10, color: DARK, lineHeight: 1.5 },
+  summaryText: { fontSize: 10, color: DARK, lineHeight: 1.6 },
   // ── Experience ──────────────────────────────────────────────
   expHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 1,
+    marginBottom: 2,       // was 1
   },
   expCompany: { fontFamily: 'Helvetica-Bold', fontSize: 10, color: BLACK },
   expDates: { fontSize: 9, color: MID },
-  expRole: { fontSize: 10, color: DARK, marginBottom: 3 },
+  expRole: { fontSize: 10, color: DARK, marginTop: 1, marginBottom: 5 }, // was marginBottom 3
   bullet: {
     flexDirection: 'row',
-    marginBottom: 2,
+    marginBottom: 3,       // was 2
     paddingLeft: 8,
   },
   bulletDot: { fontSize: 10, marginRight: 4, color: DARK },
-  bulletText: { flex: 1, fontSize: 10, color: DARK, lineHeight: 1.45 },
-  expBlock: { marginBottom: 8 },
+  bulletText: { flex: 1, fontSize: 10, color: DARK, lineHeight: 1.5 },
+  expBlock: { marginBottom: 12 },  // was 8
   // ── Education ───────────────────────────────────────────────
   eduHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 1,
+    marginBottom: 2,       // was 1
   },
   eduInstitution: { fontFamily: 'Helvetica-Bold', fontSize: 10, color: BLACK },
   eduDates: { fontSize: 9, color: MID },
-  eduDegree: { fontSize: 10, color: DARK },
-  eduDetails: { fontSize: 9, color: MID, marginTop: 1 },
-  eduBlock: { marginBottom: 6 },
+  eduDegree: { fontSize: 10, color: DARK, marginBottom: 2 },
+  eduDetails: { fontSize: 9, color: MID, marginTop: 2 },  // was 1
+  eduBlock: { marginBottom: 10 },  // was 6
   // ── Skills ──────────────────────────────────────────────────
   skillsText: { fontSize: 10, color: DARK, lineHeight: 1.5 },
   // ── Certifications ──────────────────────────────────────────

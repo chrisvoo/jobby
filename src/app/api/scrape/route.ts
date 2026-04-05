@@ -1,23 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { askClaudeJSON } from '@/lib/claude'
 
-interface JobFields {
+interface JobExtract {
   company: string
   role: string
   salary_min?: number
   salary_max?: number
-  description: string
 }
 
-const PROMPT_TEMPLATE = (text: string) => `Extract structured information from the following job posting text.
+// Only extracts structured fields — the raw text is used as-is for description.
+// Keeping it separate avoids summarisation which would lose keywords Claude needs
+// later when tailoring a resume.
+const EXTRACT_PROMPT = (text: string) => `Extract structured information from the following job posting text.
 
 Respond with ONLY a valid JSON object — no markdown fences, no explanation:
 {
   "company": "company name or empty string if not found",
   "role": "job title",
   "salary_min": null or integer (annual gross, in the currency mentioned — omit currency symbol),
-  "salary_max": null or integer,
-  "description": "concise 3-5 sentence summary of the role, key responsibilities, and must-have requirements"
+  "salary_max": null or integer
 }
 
 Job posting text:
@@ -26,7 +27,7 @@ ${text.slice(0, 8000)}`
 
 // Ashby: https://jobs.ashbyhq.com/{board}/{jobId}
 // Uses the public posting API: GET /posting-api/job-board/{board}?includeCompensation=true
-async function tryAshby(url: string): Promise<JobFields | null> {
+async function tryAshby(url: string): Promise<(JobExtract & { description: string }) | null> {
   const match = url.match(/ashbyhq\.com\/([^/?#]+)\/([0-9a-f-]{36})/i)
   if (!match) return null
 
@@ -47,7 +48,7 @@ async function tryAshby(url: string): Promise<JobFields | null> {
     role: job.title ?? '',
     salary_min: job.compensation?.compensationTierSummary?.minValue ?? undefined,
     salary_max: job.compensation?.compensationTierSummary?.maxValue ?? undefined,
-    description: text.slice(0, 1500),
+    description: text,
   }
 }
 
@@ -65,10 +66,10 @@ export async function POST(req: NextRequest) {
     const { url, text } = await req.json()
     if (!url && !text) return NextResponse.json({ error: 'url or text required' }, { status: 400 })
 
-    // Text-only path: extract fields from a pasted description using a lighter model
+    // Text-only path: extract structured fields; the pasted text IS the description
     if (!url) {
-      const fields = await askClaudeJSON<JobFields>(PROMPT_TEMPLATE(text), 'claude-3-5-haiku-20241022')
-      return NextResponse.json(fields)
+      const fields = await askClaudeJSON<JobExtract>(EXTRACT_PROMPT(text))
+      return NextResponse.json({ ...fields, description: text as string })
     }
 
     // Try native APIs for known SPA job boards first
@@ -98,8 +99,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const fields = await askClaudeJSON<JobFields>(PROMPT_TEMPLATE(pageText), 'claude-3-5-haiku-20241022')
-    return NextResponse.json(fields)
+    const fields = await askClaudeJSON<JobExtract>(EXTRACT_PROMPT(pageText))
+    return NextResponse.json({ ...fields, description: pageText })
   } catch (err) {
     console.error(err)
     const message = err instanceof Error ? err.message : 'Scrape failed'

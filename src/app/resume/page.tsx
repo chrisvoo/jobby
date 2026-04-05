@@ -3,18 +3,19 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Upload, FileText, Trash2, Sparkles, Download,
-  AlertTriangle, CheckCircle2, Loader2, Link2, BookmarkPlus, X, Eraser,
+  AlertTriangle, CheckCircle2, Loader2, Link2, BookmarkPlus, X, Eraser, FileCheck2, ChevronDown,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import type { Job, JobStatus, Resume, ExtractedJobFields } from '@/lib/types'
+import { ResumeEditor } from '@/components/resume-editor'
+import type { Job, JobStatus, Resume, ExtractedJobFields, ResumeData } from '@/lib/types'
 
-interface EnhanceResult {
-  filename: string
+interface PrepareResult {
+  output_filename: string
   warnings: string[]
   changes: Array<{ original_text: string; replacement_text: string; reason: string }>
-  download_url: string
+  resume: ResumeData
 }
 
 interface QuickAddForm {
@@ -47,7 +48,10 @@ export default function ResumePage() {
   const [scrapedFields, setScrapedFields] = useState<Partial<ExtractedJobFields> | null>(null)
   const [scraping, setScraping] = useState(false)
   const [enhancing, setEnhancing] = useState(false)
-  const [result, setResult] = useState<EnhanceResult | null>(null)
+  const [preview, setPreview] = useState<PrepareResult | null>(null)
+  const [draftResume, setDraftResume] = useState<ResumeData | null>(null)
+  const [confirming, setConfirming] = useState(false)
+  const [finalResult, setFinalResult] = useState<{ filename: string; download_url: string } | null>(null)
   const [lsLoaded, setLsLoaded] = useState(false)
 
   const [quickAddOpen, setQuickAddOpen] = useState(false)
@@ -116,13 +120,27 @@ export default function ResumePage() {
       .catch(() => {})
   }, [])
 
+  // When the user picks a job from the dropdown, load its stored description.
+  // Only overwrite if the textarea is empty or the current text came from a different
+  // scrapedFields context (i.e. it's not a freshly-scraped description for this job).
+  useEffect(() => {
+    if (!selectedJobId || !jobs.length) return
+    const job = jobs.find((j) => j.id === selectedJobId)
+    if (job?.description && !jobDescription.trim()) {
+      setJobDescription(job.description)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedJobId, jobs])
+
   function clearForm() {
     setSelectedResumeId('')
     setSelectedJobId('')
     setJobUrl('')
     setJobDescription('')
     setScrapedFields(null)
-    setResult(null)
+    setPreview(null)
+    setDraftResume(null)
+    setFinalResult(null)
     try { localStorage.removeItem(LS_KEY) } catch {}
   }
 
@@ -251,6 +269,7 @@ export default function ResumePage() {
           salary_min: quickAddForm.salary_min ? parseInt(quickAddForm.salary_min) : undefined,
           salary_max: quickAddForm.salary_max ? parseInt(quickAddForm.salary_max) : undefined,
           notes: quickAddForm.notes || undefined,
+          description: jobDescription.trim() || undefined,
           applied_at: quickAddForm.applied_at || undefined,
           base_resume_id: selectedResumeId || undefined,
         }),
@@ -276,14 +295,19 @@ export default function ResumePage() {
     const patchRes = await fetch(`/api/jobs/${selectedJobId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ base_resume_id: selectedResumeId }),
+      body: JSON.stringify({
+        base_resume_id: selectedResumeId,
+        description: jobDescription.trim() || undefined,
+      }),
     })
     if (!patchRes.ok) { toast.error('Failed to link resume to job'); return }
 
     setEnhancing(true)
-    setResult(null)
+    setPreview(null)
+    setDraftResume(null)
+    setFinalResult(null)
     try {
-      const res = await fetch('/api/enhance', {
+      const res = await fetch('/api/enhance/prepare', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -292,13 +316,38 @@ export default function ResumePage() {
         }),
       })
       if (!res.ok) throw new Error(await res.text())
-      const data = await res.json()
-      setResult(data)
-      toast.success('Resume enhanced!')
+      const data: PrepareResult = await res.json()
+      setPreview(data)
+      setDraftResume(data.resume)
+      toast.success('Resume ready — review and generate PDF')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Enhancement failed')
     } finally {
       setEnhancing(false)
+    }
+  }
+
+  async function confirmGenerate() {
+    if (!draftResume || !preview) return
+    setConfirming(true)
+    try {
+      const res = await fetch('/api/enhance/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          job_id: selectedJobId,
+          resume: draftResume,
+          output_filename: preview.output_filename,
+        }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      const data = await res.json()
+      setFinalResult(data)
+      toast.success('PDF generated!')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'PDF generation failed')
+    } finally {
+      setConfirming(false)
     }
   }
 
@@ -319,7 +368,7 @@ export default function ResumePage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left panel — Base resumes */}
         <div className="flex flex-col gap-4">
           <div className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl p-5">
@@ -473,60 +522,79 @@ export default function ResumePage() {
         </div>
       </div>
 
-      {/* Results */}
-      {result && (
+      {/* Review & Edit */}
+      {preview && draftResume && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-zinc-100">Results</h2>
-            <a
-              href={result.download_url}
-              download={result.filename}
-              className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              Download {result.filename}
-            </a>
+            <h2 className="text-lg font-semibold text-zinc-100">Review &amp; Edit</h2>
+            <div className="flex items-center gap-3">
+              {finalResult && (
+                <a
+                  href={finalResult.download_url}
+                  download={finalResult.filename}
+                  className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Download {finalResult.filename}
+                </a>
+              )}
+              <button
+                onClick={confirmGenerate}
+                disabled={confirming}
+                className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+              >
+                {confirming
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</>
+                  : <><FileCheck2 className="w-4 h-4" /> {finalResult ? 'Regenerate PDF' : 'Generate PDF'}</>
+                }
+              </button>
+            </div>
           </div>
 
-          {result.warnings.length > 0 && (
+          {preview.warnings.length > 0 && (
             <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-4 space-y-1.5">
               <div className="flex items-center gap-2 mb-2">
                 <AlertTriangle className="w-4 h-4 text-amber-400" />
-                <span className="text-sm font-semibold text-amber-400">Warnings</span>
+                <span className="text-sm font-semibold text-amber-400">ATS Warnings</span>
               </div>
-              {result.warnings.map((w, i) => (
+              {preview.warnings.map((w, i) => (
                 <p key={i} className="text-sm text-amber-300/80">• {w}</p>
               ))}
             </div>
           )}
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-zinc-800">
-              <span className="text-sm font-semibold text-zinc-100">
-                {result.changes.length} changes applied
-              </span>
-            </div>
-            <div className="divide-y divide-zinc-800">
-              {result.changes.map((c, i) => (
-                <div key={i} className="px-5 py-4">
-                  <div className="flex items-start gap-2 mb-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-                    <p className="text-xs text-zinc-500">{c.reason}</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 mt-2">
-                    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                      <p className="text-xs text-red-400 font-medium mb-1 uppercase tracking-wide">Before</p>
-                      <p className="text-xs text-red-300/80 leading-relaxed">{c.original_text}</p>
+          <ResumeEditor value={draftResume} onChange={setDraftResume} />
+
+          {preview.changes.length > 0 && (
+            <details className="group bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+              <summary className="flex items-center justify-between px-5 py-3 cursor-pointer list-none hover:bg-zinc-800/40 transition-colors">
+                <span className="text-sm font-semibold text-zinc-100">
+                  Claude&apos;s notes ({preview.changes.length} changes)
+                </span>
+                <ChevronDown className="w-4 h-4 text-zinc-500 group-open:rotate-180 transition-transform" />
+              </summary>
+              <div className="divide-y divide-zinc-800 border-t border-zinc-800">
+                {preview.changes.map((c, i) => (
+                  <div key={i} className="px-5 py-4">
+                    <div className="flex items-start gap-2 mb-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                      <p className="text-xs text-zinc-500">{c.reason}</p>
                     </div>
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
-                      <p className="text-xs text-emerald-400 font-medium mb-1 uppercase tracking-wide">After</p>
-                      <p className="text-xs text-emerald-300/80 leading-relaxed">{c.replacement_text}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                      <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                        <p className="text-xs text-red-400 font-medium mb-1 uppercase tracking-wide">Before</p>
+                        <p className="text-xs text-red-300/80 leading-relaxed">{c.original_text}</p>
+                      </div>
+                      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
+                        <p className="text-xs text-emerald-400 font-medium mb-1 uppercase tracking-wide">After</p>
+                        <p className="text-xs text-emerald-300/80 leading-relaxed">{c.replacement_text}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
+                ))}
+              </div>
+            </details>
+          )}
         </div>
       )}
 
@@ -542,7 +610,7 @@ export default function ResumePage() {
             </div>
 
             <div className="px-6 py-5 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>Company *</label>
                   <input
@@ -609,7 +677,7 @@ export default function ResumePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>Applied date</label>
                   <input

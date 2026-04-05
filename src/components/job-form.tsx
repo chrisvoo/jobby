@@ -79,7 +79,7 @@ export function JobForm({ job, resumes, onSuccess }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label="Company *">
           <input
             value={form.company}
@@ -107,7 +107,7 @@ export function JobForm({ job, resumes, onSuccess }: Props) {
         />
       </Field>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label="Status">
           <select
             value={form.status}
@@ -131,7 +131,7 @@ export function JobForm({ job, resumes, onSuccess }: Props) {
         </Field>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label="Salary Min (annual)">
           <input
             type="number"

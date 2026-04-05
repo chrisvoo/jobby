@@ -33,31 +33,23 @@ const TECH_STACK = [
   }
 ]
 
-const DIAGRAM = `flowchart LR
+const DIAGRAM = `flowchart TD
   Browser(["Browser"])
 
-  subgraph next ["Next.js :3000"]
+  subgraph App ["Next.js :3000"]
     UI["React UI"]
-    API["API Routes\\n(Node.js)"]
+    API["API Routes"]
   end
 
-  subgraph local ["Local Machine"]
-    claude(["claude CLI"])
-    DB[("DuckDB\\n./data/app.db")]
-  end
+  Claude(["Claude CLI"])
+  DB[("DuckDB")]
+  Files[("PDF Files")]
 
-  Storage[("./data/uploads/\\nresumes + adapted PDFs")]
-
-  Browser -- "CRUD jobs & resumes" --> UI
-  UI -- "fetch" --> API
-  API -- "read / write" --> DB
-  API -- "save PDF" --> Storage
-  API -- "extract text (unpdf)" --> Storage
-  API -- "stdin: system prompt\\n+ resume text\\n+ job description" --> claude
-  claude -- "stdout: structured\\nresume JSON" --> API
-  API -- "render template\\n(@react-pdf/renderer)" --> API
-  API -- "adapted PDF" --> Storage
-  Browser -- "download" --> API`
+  Browser <--> UI
+  UI <--> API
+  API <--> DB
+  API <--> Files
+  API <--> Claude`
 
 export default function AboutPage() {
   return (
@@ -73,7 +65,7 @@ export default function AboutPage() {
       {/* Tech stack */}
       <section>
         <h2 className="text-base font-semibold text-zinc-100 mb-4">Technology Stack</h2>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {TECH_STACK.map(({ name, description, color, logo }) => (
             <div key={name} className={`border rounded-xl p-4 ${color}`}>
               <div className="flex items-center gap-3 mb-3">

@@ -39,6 +39,8 @@ export function MermaidDiagram({ chart }: Props) {
             if (svgEl) {
               svgEl.removeAttribute('height')
               svgEl.style.width = '100%'
+              svgEl.style.display = 'block'
+              svgEl.style.margin = '0 auto'
             }
           }
         } catch (e) {
@@ -54,7 +56,7 @@ export function MermaidDiagram({ chart }: Props) {
   return (
     <div
       ref={ref}
-      className="w-full overflow-x-auto rounded-xl bg-zinc-900 border border-zinc-800 p-6"
+      className="w-full overflow-x-auto rounded-xl bg-zinc-900 border border-zinc-800 p-6 flex justify-center"
     />
   )
 }

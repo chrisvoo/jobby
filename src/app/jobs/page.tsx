@@ -55,7 +55,8 @@ export default function JobsPage() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-1 bg-zinc-900 border border-zinc-800 rounded-lg p-1 w-fit">
+      <div className="overflow-x-auto pb-1">
+      <div className="flex gap-1 bg-zinc-900 border border-zinc-800 rounded-lg p-1 w-fit min-w-max">
         {ALL_STATUSES.map((s) => (
           <button
             key={s}
@@ -73,6 +74,7 @@ export default function JobsPage() {
           </button>
         ))}
       </div>
+      </div>
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
         {loading ? (
@@ -85,7 +87,8 @@ export default function JobsPage() {
             </Link>
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr className="border-b border-zinc-800">
                 {['Company', 'Role', 'Status', 'Applied', 'Salary', ''].map((h, i) => (
@@ -143,6 +146,7 @@ export default function JobsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
