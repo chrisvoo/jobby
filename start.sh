@@ -5,9 +5,11 @@ cd "$(dirname "$0")"
 
 # ── Parse flags ──────────────────────────────────────────────
 DEV=false
+BUILD=false
 for arg in "$@"; do
   case "$arg" in
-    --dev|-d) DEV=true ;;
+    --dev|-d)   DEV=true   ;;
+    --build|-b) BUILD=true ;;
   esac
 done
 
@@ -55,26 +57,58 @@ if [ ! -f "$CRED_FILE" ]; then
 fi
 
 # ── Build and start ──────────────────────────────────────────
+# --build is opt-in: images are built automatically on first run (when they
+# don't exist yet) and reused on every subsequent restart.  Pass --build / -b
+# explicitly only when you have changed a Dockerfile, package.json,
+# requirements.txt, or (for prod) want to bake in new source code.
+BUILD_FLAG=""
+[ "$BUILD" = true ] && BUILD_FLAG="--build"
+
 if [ "$DEV" = true ]; then
   echo "Starting Jobby in DEVELOPMENT mode (hot-reload enabled)..."
-  docker compose -f docker-compose.dev.yml up --build -d
+  # shellcheck disable=SC2086
+  docker compose -f docker-compose.dev.yml up $BUILD_FLAG -d
   echo ""
   echo "  Jobby (dev) is running at  http://localhost:3000"
   echo "  Edit files locally — changes are picked up automatically."
   echo "  Logs:                      docker compose -f docker-compose.dev.yml logs -f node"
   echo "  Stop:                      docker compose -f docker-compose.dev.yml down"
+  echo "  Rebuild images:            ./start.sh --dev --build"
 else
-  echo "Building and starting Jobby..."
-  docker compose up --build -d
+  echo "Starting Jobby..."
+  # shellcheck disable=SC2086
+  docker compose up $BUILD_FLAG -d
   echo ""
   echo "  Jobby is running at  http://localhost:3000"
   echo "  Stop with:           docker compose down"
+  echo "  Rebuild images:      ./start.sh --build"
 fi
 echo ""
 
-# ── Open browser ─────────────────────────────────────────────
-if command -v open &>/dev/null; then
-  open http://localhost:3000
-elif command -v xdg-open &>/dev/null; then
-  xdg-open http://localhost:3000
-fi
+# ── Wait for the Next.js server, then open the browser ───────
+_open_when_ready() {
+  local url="http://localhost:3000"
+  local health="${url}/api/health"
+  local max_wait=60   # seconds before giving up
+  local waited=0
+
+  echo "  Waiting for server to be ready..."
+  while ! curl -sf "$health" >/dev/null 2>&1; do
+    if [ "$waited" -ge "$max_wait" ]; then
+      echo "  Server did not respond within ${max_wait}s — open $url manually."
+      return
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+
+  echo "  Server is ready (${waited}s)."
+  if command -v open &>/dev/null; then
+    open "$url"
+  elif command -v xdg-open &>/dev/null; then
+    xdg-open "$url"
+  fi
+}
+
+# Run in the background so the shell prompt returns immediately
+_open_when_ready &

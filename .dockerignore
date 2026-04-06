@@ -9,3 +9,20 @@ data
 .DS_Store
 Thumbs.db
 jobby.config.json
+
+# Python sidecar — not needed inside the Node image
+scripts/tests/
+scripts/pytest.ini
+scripts/requirements-test.txt
+
+# Test / dev tooling — not needed inside any image
+src/__tests__/
+vitest.config.ts
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Editor / OS artefacts
+*.log
+.vscode/
