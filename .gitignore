@@ -7,8 +7,12 @@ node_modules/
 
 # Data (persisted locally, never committed)
 data/app.db
-data/uploads/resumes/*.pdf
-data/uploads/adapted/*.pdf
+data/app.db.wal
+# Upload dirs: track folders via .gitkeep only, not user files
+data/uploads/resumes/*
+!data/uploads/resumes/.gitkeep
+data/uploads/adapted/*
+!data/uploads/adapted/.gitkeep
 
 # Configuration (contains machine-specific absolute paths)
 jobby.config.json

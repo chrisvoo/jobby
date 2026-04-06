@@ -3,14 +3,8 @@ import { randomUUID } from 'crypto'
 import path from 'path'
 import fs from 'fs'
 import { getDb, toISO } from '@/lib/db'
-import { readConfig } from '@/lib/app-config'
+import { getDataDir } from '@/lib/app-config'
 import type { Resume } from '@/lib/types'
-
-// Always derive the upload directory from the same config that drives DuckDB,
-// so both the DB file and PDF uploads stay under the same root.
-function getDataDir() {
-  return path.dirname(readConfig().duckdb_path)
-}
 
 function rowToResume(row: Record<string, unknown>): Resume {
   return {

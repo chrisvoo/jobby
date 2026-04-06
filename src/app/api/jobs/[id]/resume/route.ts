@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import fs from 'fs'
 import { getDb } from '@/lib/db'
+import { resolveDataPath } from '@/lib/app-config'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -13,7 +14,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     if (!rows.length) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const row = rows[0] as Record<string, unknown>
-    const filePath = row.resume_path ? String(row.resume_path) : null
+    const filePath = row.resume_path ? resolveDataPath(String(row.resume_path)) : null
     if (!filePath) return NextResponse.json({ error: 'No adapted resume yet' }, { status: 404 })
     if (!fs.existsSync(filePath))
       return NextResponse.json({ error: 'File not found on disk' }, { status: 404 })

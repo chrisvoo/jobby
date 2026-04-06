@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { resolveDataPath } from '@/lib/app-config'
 import fs from 'fs'
 
 export async function DELETE(
@@ -14,12 +15,8 @@ export async function DELETE(
     const rows = result.getRowObjects()
     if (!rows.length) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    const filePath = String((rows[0] as Record<string, unknown>).file_path)
+    const filePath = resolveDataPath(String((rows[0] as Record<string, unknown>).file_path))
 
-    // Delete the DB row BEFORE the file.
-    // If the DB delete fails the file is untouched and the user can retry.
-    // If the DB delete succeeds but the file unlink fails it's a harmless
-    // orphan — far better than a ghost DB row with no backing file.
     await conn.run(`UPDATE jobs SET base_resume_id = NULL WHERE base_resume_id = '${id}'`)
     await conn.run(`DELETE FROM resumes WHERE id = '${id}'`)
 

@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.gitignore
+data
+*.md
+.env*
+.idea
+.DS_Store
+Thumbs.db
+jobby.config.json

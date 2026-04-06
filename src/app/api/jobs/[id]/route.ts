@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import fs from 'fs'
 import { getDb, toISO, parseSalary } from '@/lib/db'
+import { resolveDataPath } from '@/lib/app-config'
 import type { Job, UpdateJobInput } from '@/lib/types'
 
 function rowToJob(row: Record<string, unknown>): Job {
@@ -86,7 +87,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
     const result = await conn.runAndReadAll(`SELECT resume_path FROM jobs WHERE id = '${id}'`)
     const rows = result.getRowObjects()
-    const resumePath = rows[0]?.resume_path ? String(rows[0].resume_path) : null
+    const rawPath = rows[0]?.resume_path ? String(rows[0].resume_path) : null
+    const resumePath = rawPath ? resolveDataPath(rawPath) : null
 
     await conn.run(`DELETE FROM jobs WHERE id = '${id}'`)
 

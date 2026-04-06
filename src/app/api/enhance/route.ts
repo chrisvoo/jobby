@@ -5,11 +5,8 @@ import { getDb } from '@/lib/db'
 import { extractPdfText } from '@/lib/pdf-extractor'
 import { askClaudeJSON } from '@/lib/claude'
 import { generateResumePDF } from '@/lib/pdf-generator'
+import { getDataDir, resolveDataPath } from '@/lib/app-config'
 import type { ResumeData } from '@/lib/pdf-generator'
-
-const DATA_DIR = process.env.DUCKDB_PATH
-  ? path.dirname(process.env.DUCKDB_PATH)
-  : path.join(process.cwd(), 'data')
 
 const SYSTEM_PROMPT = `You are an expert resume writer optimising resumes for both human readers and Applicant Tracking Systems (ATS).
 
@@ -105,7 +102,7 @@ export async function POST(req: NextRequest) {
     const resumes = resumeResult.getRowObjects()
     if (!resumes.length) return NextResponse.json({ error: 'Resume not found' }, { status: 404 })
 
-    const resumePath = String((resumes[0] as Record<string, unknown>).file_path)
+    const resumePath = resolveDataPath(String((resumes[0] as Record<string, unknown>).file_path))
     if (!fs.existsSync(resumePath)) {
       return NextResponse.json({ error: 'Resume file missing on disk' }, { status: 404 })
     }
@@ -133,7 +130,7 @@ Candidate name hint (for filename): ${candidate_name ?? 'extract from resume'}`
     const pdfBuffer = await generateResumePDF(result.resume)
 
     // Save to disk
-    const adaptedDir = path.join(DATA_DIR, 'uploads', 'adapted')
+    const adaptedDir = path.join(getDataDir(), 'uploads', 'adapted')
     if (!fs.existsSync(adaptedDir)) fs.mkdirSync(adaptedDir, { recursive: true })
 
     const outputPath = path.join(adaptedDir, `${job_id}.pdf`)

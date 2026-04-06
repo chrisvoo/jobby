@@ -3,14 +3,14 @@ import path from 'path'
 import fs from 'fs'
 import { readConfig } from './app-config'
 
-const DB_PATH = readConfig().duckdb_path
-
 // Survive Next.js hot-reload in development
 declare global {
   // eslint-disable-next-line no-var
   var __duckdb_instance: DuckDBInstance | undefined
   // eslint-disable-next-line no-var
   var __duckdb_conn: Awaited<ReturnType<DuckDBInstance['connect']>> | undefined
+  // eslint-disable-next-line no-var
+  var __duckdb_path: string | undefined
 }
 
 async function initSchema(conn: Awaited<ReturnType<DuckDBInstance['connect']>>) {
@@ -54,15 +54,23 @@ async function runMigrations(conn: Awaited<ReturnType<DuckDBInstance['connect']>
 }
 
 export async function getDb() {
-  if (global.__duckdb_conn) {
+  const dbPath = readConfig().duckdb_path
+
+  if (global.__duckdb_conn && global.__duckdb_path === dbPath) {
     await runMigrations(global.__duckdb_conn)
     return global.__duckdb_conn
   }
 
-  const dir = path.dirname(DB_PATH)
+  if (global.__duckdb_conn && global.__duckdb_path !== dbPath) {
+    global.__duckdb_conn = undefined
+    global.__duckdb_instance = undefined
+    _migrationsRan = false
+  }
+
+  const dir = path.dirname(dbPath)
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
 
-  const instance = await DuckDBInstance.create(DB_PATH)
+  const instance = await DuckDBInstance.create(dbPath)
   const conn = await instance.connect()
 
   await initSchema(conn)
@@ -70,6 +78,7 @@ export async function getDb() {
 
   global.__duckdb_instance = instance
   global.__duckdb_conn = conn
+  global.__duckdb_path = dbPath
 
   return conn
 }

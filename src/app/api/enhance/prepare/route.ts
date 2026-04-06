@@ -3,9 +3,10 @@ import fs from 'fs'
 import { getDb } from '@/lib/db'
 import { extractPdfText } from '@/lib/pdf-extractor'
 import { askClaudeJSON } from '@/lib/claude'
+import { resolveDataPath } from '@/lib/app-config'
 import type { ResumeData } from '@/lib/types'
 
-const SYSTEM_PROMPT = `You are an expert resume writer optimising resumes for both human readers and Applicant Tracking Systems (ATS).
+const MINIMAL_PROMPT = `You are an expert resume writer optimising resumes for both human readers and Applicant Tracking Systems (ATS).
 
 Given an original resume and a job description, produce an improved version of the candidate's resume that:
 - Retains ONLY information actually present in the original resume — do not invent experience, skills, or credentials
@@ -58,16 +59,51 @@ Respond with ONLY a valid JSON object — no markdown fences, no explanation:
   }
 }`
 
-interface ClaudeEnhanceResponse {
+const PIXEL_PERFECT_PROMPT = `You are an expert resume writer. The user has a beautifully formatted PDF resume and wants to tailor it to a specific job posting WITHOUT changing the layout, fonts, or visual design.
+
+Your job is to propose **surgical text replacements** — each one is an exact "find and replace" that will be applied directly in the PDF. The original formatting (font, size, colour, position) is preserved automatically.
+
+Rules:
+- Each "old" value MUST be an EXACT substring that appears verbatim in the original resume text. Copy it character-for-character.
+- CRITICAL — length constraint: the "new" text MUST NOT exceed the word count of "old" by more than 10%. PDFs have fixed layouts; the replacement is painted into the exact same bounding box as the original text. If "new" is too long, text overflows and gets cut off or rendered at a reduced font size. Prefer slightly shorter or equal-length rewrites.
+- NEVER replace section headers, company names, institution names, dates, or structural text (e.g. "Experience", "Education", "Skills").
+- Focus on: professional summary, bullet points, and skill lists.
+- Retain ONLY information actually present in the original — do not invent experience or credentials.
+- Incorporate relevant keywords from the job posting naturally.
+- Rewrite bullets to be achievement-oriented where possible.
+
+Generate the output filename using the format: FirstName_LastName_JobTitle_Resume.pdf
+
+Respond with ONLY a valid JSON object — no markdown fences, no explanation:
+{
+  "output_filename": "FirstName_LastName_JobTitle_Resume.pdf",
+  "warnings": ["any issues or limitations noticed"],
+  "replacements": [
+    {
+      "section": "summary | experience | skills | other",
+      "old": "exact text from the original resume",
+      "new": "improved replacement text",
+      "reason": "brief explanation"
+    }
+  ]
+}`
+
+interface MinimalResponse {
   output_filename: string
   warnings: string[]
   changes: Array<{ original_text: string; replacement_text: string; reason: string }>
   resume: ResumeData
 }
 
+interface PixelPerfectResponse {
+  output_filename: string
+  warnings: string[]
+  replacements: Array<{ section: string; old: string; new: string; reason: string }>
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { job_id, job_description, candidate_name } = await req.json()
+    const { job_id, job_description, candidate_name, template } = await req.json()
 
     if (!job_id || !job_description) {
       return NextResponse.json({ error: 'job_id and job_description required' }, { status: 400 })
@@ -91,14 +127,16 @@ export async function POST(req: NextRequest) {
     const resumes = resumeResult.getRowObjects()
     if (!resumes.length) return NextResponse.json({ error: 'Resume not found' }, { status: 404 })
 
-    const resumePath = String((resumes[0] as Record<string, unknown>).file_path)
+    const resumePath = resolveDataPath(String((resumes[0] as Record<string, unknown>).file_path))
     if (!fs.existsSync(resumePath)) {
       return NextResponse.json({ error: 'Resume file missing on disk' }, { status: 404 })
     }
 
     const resumeText = await extractPdfText(resumePath)
+    const isPixelPerfect = template === 'pixel-perfect'
+    const systemPrompt = isPixelPerfect ? PIXEL_PERFECT_PROMPT : MINIMAL_PROMPT
 
-    const prompt = `${SYSTEM_PROMPT}
+    const prompt = `${systemPrompt}
 
 ---
 ORIGINAL RESUME TEXT:
@@ -111,9 +149,20 @@ ${job_description}
 ---
 Candidate name hint (for filename): ${candidate_name ?? 'extract from resume'}`
 
-    const result = await askClaudeJSON<ClaudeEnhanceResponse>(prompt)
+    if (isPixelPerfect) {
+      const result = await askClaudeJSON<PixelPerfectResponse>(prompt)
+      return NextResponse.json({
+        template: 'pixel-perfect',
+        output_filename: result.output_filename,
+        warnings: result.warnings ?? [],
+        replacements: result.replacements ?? [],
+        resume_path: resumePath,
+      })
+    }
 
+    const result = await askClaudeJSON<MinimalResponse>(prompt)
     return NextResponse.json({
+      template: 'minimal',
       output_filename: result.output_filename,
       warnings: result.warnings ?? [],
       changes: result.changes ?? [],
