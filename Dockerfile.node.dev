@@ -10,4 +10,4 @@ EXPOSE 3000
 ENV HOSTNAME=0.0.0.0
 ENV WATCHPACK_POLLING=true
 
-CMD ["npx", "next", "dev"]
+CMD ["npx", "next", "dev", "--turbopack"]

@@ -120,7 +120,5 @@ src/
   app/            Pages and API routes
   components/     Sidebar, forms, dialogs, editors
   lib/            DuckDB, Claude wrapper, PDF tools, config
-scripts/
-  pdf_replace.py  PyMuPDF sidecar server
 data/             DuckDB file + uploaded PDFs (created on first run, git-ignored)
 ```

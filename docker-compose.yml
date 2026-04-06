@@ -9,19 +9,4 @@ services:
       - "${HOME}/.claude.json:/home/nextjs/.claude.json:ro"
       - "${HOME}/.claude/.credentials.json:/home/nextjs/.claude/.credentials.json:ro"
       - ./data:/app/data
-    environment:
-      - PYTHON_SIDECAR_URL=http://python:5001
-    depends_on:
-      python:
-        condition: service_healthy
-    restart: unless-stopped
-
-  python:
-    build:
-      context: .
-      dockerfile: Dockerfile.python
-    volumes:
-      - ./data:/app/data
-    expose:
-      - "5001"
     restart: unless-stopped

@@ -60,7 +60,7 @@ fi
 # --build is opt-in: images are built automatically on first run (when they
 # don't exist yet) and reused on every subsequent restart.  Pass --build / -b
 # explicitly only when you have changed a Dockerfile, package.json,
-# requirements.txt, or (for prod) want to bake in new source code.
+# or (for prod) want to bake in new source code.
 BUILD_FLAG=""
 [ "$BUILD" = true ] && BUILD_FLAG="--build"
 

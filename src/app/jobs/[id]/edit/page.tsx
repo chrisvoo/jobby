@@ -18,7 +18,7 @@ export default function EditJobPage() {
       fetch(`/api/jobs/${id}`).then((r) => r.json()),
       fetch('/api/resumes').then((r) => r.json()),
     ])
-      .then(([j, r]) => { setJob(j); setResumes(r) })
+      .then(([j, r]) => { setJob(j); setResumes(Array.isArray(r) ? r : []) })
       .finally(() => setLoading(false))
   }, [id])
 

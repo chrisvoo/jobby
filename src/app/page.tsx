@@ -14,7 +14,7 @@ export default function DashboardPage() {
   useEffect(() => {
     fetch('/api/jobs')
       .then((r) => r.json())
-      .then((data) => { setJobs(data); setLoading(false) })
+      .then((data) => { setJobs(Array.isArray(data) ? data : []); setLoading(false) })
       .catch(() => setLoading(false))
   }, [])
 

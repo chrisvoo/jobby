@@ -12,10 +12,16 @@ export const RESUME_TEMPLATES: ResumeTemplate[] = [
       'Single-column, black-and-white layout with no graphic elements. Uses plain Helvetica throughout, uppercase section headings with a fine rule, and dense bullet-point experience blocks. Maximises content density and ATS compatibility — every character is readable by automated parsers.',
   },
   {
-    id: 'pixel-perfect',
-    name: 'Pixel-Perfect',
+    id: 'sidebar',
+    name: 'Two-Column Sidebar',
     description:
-      'Keeps your original PDF layout, fonts, colours, and images intact. Claude surgically rewrites specific text sections (summary, bullets, skills) without altering the visual design. Best for professionally designed resumes. ⚠️ Because PDF positions are fixed, replacement text must stay close to the original length — if it is significantly longer, the font shrinks to fit. For larger rewrites, use Minimal instead.',
+      'Narrow left sidebar (~30%) holds contact info, skills, and certifications; the wide right column holds summary, experience, and education. Visually distinct and great for roles where layout matters, while remaining ATS-friendly for plain-text parsers.',
+  },
+  {
+    id: 'modern',
+    name: 'Modern Accent',
+    description:
+      'Single-column layout with an indigo accent colour on the name and section titles. Section headings use a bold left border rule instead of an underline. Adds personality while keeping all content in a clean, parser-readable structure.',
   },
 ]
 

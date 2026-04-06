@@ -1,8 +1,0 @@
-# Test dependencies for scripts/tests/
-# Install alongside the main requirements:
-#   pip install -r scripts/requirements.txt -r scripts/requirements-test.txt
-# Then run from the scripts/ directory:
-#   pytest tests/ -v
-
-pytest>=8.0
-pytest-mock>=3.14        # optional: provides the `mocker` fixture for cleaner mocking

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Upload, FileText, Trash2, Sparkles, Download,
-  AlertTriangle, CheckCircle2, Loader2, Link2, BookmarkPlus, X, Eraser, FileCheck2, ChevronDown, RefreshCw,
+  AlertTriangle, CheckCircle2, Loader2, Link2, BookmarkPlus, X, Eraser, FileCheck2, ChevronDown,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
@@ -13,30 +13,13 @@ import { RESUME_TEMPLATES, DEFAULT_TEMPLATE_ID } from '@/lib/resume-templates'
 import type { TemplateId } from '@/lib/resume-templates'
 import type { Job, JobStatus, Resume, ExtractedJobFields, ResumeData } from '@/lib/types'
 
-interface MinimalPrepareResult {
+interface PrepareResult {
   template: 'minimal'
   output_filename: string
   warnings: string[]
   changes: Array<{ original_text: string; replacement_text: string; reason: string }>
   resume: ResumeData
 }
-
-interface PixelPerfectReplacement {
-  section: string
-  old: string
-  new: string
-  reason: string
-}
-
-interface PixelPerfectPrepareResult {
-  template: 'pixel-perfect'
-  output_filename: string
-  warnings: string[]
-  replacements: PixelPerfectReplacement[]
-  resume_path: string
-}
-
-type PrepareResult = MinimalPrepareResult | PixelPerfectPrepareResult
 
 interface QuickAddForm {
   company: string
@@ -70,13 +53,10 @@ export default function ResumePage() {
   const [enhancing, setEnhancing] = useState(false)
   const [preview, setPreview] = useState<PrepareResult | null>(null)
   const [draftResume, setDraftResume] = useState<ResumeData | null>(null)
-  const [draftReplacements, setDraftReplacements] = useState<PixelPerfectReplacement[] | null>(null)
-  const [pixelPerfectResumePath, setPixelPerfectResumePath] = useState<string | null>(null)
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>(DEFAULT_TEMPLATE_ID)
   const [confirming, setConfirming] = useState(false)
   const [finalResult, setFinalResult] = useState<{ filename: string; download_url: string } | null>(null)
   const [lsLoaded, setLsLoaded] = useState(false)
-
-  const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>(DEFAULT_TEMPLATE_ID)
 
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [quickAddForm, setQuickAddForm] = useState<QuickAddForm>(defaultQuickAdd())
@@ -114,14 +94,14 @@ export default function ResumePage() {
       fetch('/api/resumes').then((r) => r.json()),
       fetch('/api/jobs').then((r) => r.json()),
     ])
-      .then(([r, j]: [Resume[], Job[]]) => {
-        setResumes(r)
-        setJobs(j)
+      .then(([r, j]) => {
+        const resumes = Array.isArray(r) ? r as Resume[] : []
+        const jobs = Array.isArray(j) ? j as Job[] : []
+        setResumes(resumes)
+        setJobs(jobs)
 
-        // Reconcile localStorage selections against real DB data.
-        // If a stored ID no longer exists (deleted record), clear it.
         setSelectedResumeId((prev) => {
-          if (prev && !r.find((x) => x.id === prev)) {
+          if (prev && !resumes.find((x) => x.id === prev)) {
             try {
               const stored = JSON.parse(localStorage.getItem(LS_KEY) ?? '{}')
               localStorage.setItem(LS_KEY, JSON.stringify({ ...stored, selectedResumeId: '' }))
@@ -131,7 +111,7 @@ export default function ResumePage() {
           return prev
         })
         setSelectedJobId((prev) => {
-          if (prev && !j.find((x) => x.id === prev)) {
+          if (prev && !jobs.find((x) => x.id === prev)) {
             try {
               const stored = JSON.parse(localStorage.getItem(LS_KEY) ?? '{}')
               localStorage.setItem(LS_KEY, JSON.stringify({ ...stored, selectedJobId: '' }))
@@ -144,9 +124,6 @@ export default function ResumePage() {
       .catch(() => {})
   }, [])
 
-  // When the user picks a job from the dropdown, load its stored description.
-  // Only overwrite if the textarea is empty or the current text came from a different
-  // scrapedFields context (i.e. it's not a freshly-scraped description for this job).
   useEffect(() => {
     if (!selectedJobId || !jobs.length) return
     const job = jobs.find((j) => j.id === selectedJobId)
@@ -164,8 +141,6 @@ export default function ResumePage() {
     setScrapedFields(null)
     setPreview(null)
     setDraftResume(null)
-    setDraftReplacements(null)
-    setPixelPerfectResumePath(null)
     setFinalResult(null)
     try { localStorage.removeItem(LS_KEY) } catch {}
   }
@@ -331,8 +306,6 @@ export default function ResumePage() {
     setEnhancing(true)
     setPreview(null)
     setDraftResume(null)
-    setDraftReplacements(null)
-    setPixelPerfectResumePath(null)
     setFinalResult(null)
     try {
       const res = await fetch('/api/enhance/prepare', {
@@ -347,14 +320,7 @@ export default function ResumePage() {
       if (!res.ok) { const e = await res.json().catch(() => null); throw new Error(e?.error ?? `Server error ${res.status}`) }
       const data: PrepareResult = await res.json()
       setPreview(data)
-
-      if (data.template === 'pixel-perfect') {
-        setDraftReplacements(data.replacements.map((r) => ({ ...r })))
-        setPixelPerfectResumePath(data.resume_path)
-      } else {
-        setDraftResume(data.resume)
-      }
-
+      setDraftResume(data.resume)
       toast.success('Resume ready — review and generate PDF')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Enhancement failed')
@@ -364,33 +330,19 @@ export default function ResumePage() {
   }
 
   async function confirmGenerate() {
-    if (!preview) return
-    const isPixelPerfect = preview.template === 'pixel-perfect'
-
-    if (isPixelPerfect && !draftReplacements?.length) return
-    if (!isPixelPerfect && !draftResume) return
+    if (!preview || !draftResume) return
 
     setConfirming(true)
     try {
-      const body = isPixelPerfect
-        ? {
-            job_id: selectedJobId,
-            output_filename: preview.output_filename,
-            template: 'pixel-perfect',
-            replacements: draftReplacements,
-            resume_path: pixelPerfectResumePath,
-          }
-        : {
-            job_id: selectedJobId,
-            resume: draftResume,
-            output_filename: preview.output_filename,
-            template: selectedTemplate,
-          }
-
       const res = await fetch('/api/enhance/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          job_id: selectedJobId,
+          resume: draftResume,
+          output_filename: preview.output_filename,
+          template: selectedTemplate,
+        }),
       })
       if (!res.ok) {
         const errBody = await res.json().catch(() => null)
@@ -403,41 +355,6 @@ export default function ResumePage() {
       toast.error(err instanceof Error ? err.message : 'PDF generation failed')
     } finally {
       setConfirming(false)
-    }
-  }
-
-  async function reEnhanceAs(template: TemplateId) {
-    setSelectedTemplate(template)
-    setPreview(null)
-    setDraftResume(null)
-    setDraftReplacements(null)
-    setPixelPerfectResumePath(null)
-    setFinalResult(null)
-    setEnhancing(true)
-    try {
-      const res = await fetch('/api/enhance/prepare', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          job_id: selectedJobId,
-          job_description: jobDescription,
-          template,
-        }),
-      })
-      if (!res.ok) { const e = await res.json().catch(() => null); throw new Error(e?.error ?? `Server error ${res.status}`) }
-      const data: PrepareResult = await res.json()
-      setPreview(data)
-      if (data.template === 'pixel-perfect') {
-        setDraftReplacements(data.replacements.map((r) => ({ ...r })))
-        setPixelPerfectResumePath(data.resume_path)
-      } else {
-        setDraftResume(data.resume)
-      }
-      toast.success('Resume ready — review and generate PDF')
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Enhancement failed')
-    } finally {
-      setEnhancing(false)
     }
   }
 
@@ -639,21 +556,11 @@ export default function ResumePage() {
       </div>
 
       {/* Review & Edit */}
-      {preview && (draftResume || draftReplacements) && (
+      {preview && draftResume && (
         <div className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <h2 className="text-lg font-semibold text-zinc-100">Review &amp; Edit</h2>
             <div className="flex items-center gap-3 flex-wrap">
-              <button
-                onClick={() => reEnhanceAs(preview.template === 'pixel-perfect' ? 'minimal' : 'pixel-perfect')}
-                disabled={enhancing}
-                className="inline-flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50"
-              >
-                {enhancing
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Switching…</>
-                  : <><RefreshCw className="w-4 h-4" /> Re-enhance as {preview.template === 'pixel-perfect' ? 'Minimal' : 'Pixel-Perfect'}</>
-                }
-              </button>
               {finalResult && (
                 <a
                   href={finalResult.download_url}
@@ -681,9 +588,7 @@ export default function ResumePage() {
             <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-4 space-y-1.5">
               <div className="flex items-center gap-2 mb-2">
                 <AlertTriangle className="w-4 h-4 text-amber-400" />
-                <span className="text-sm font-semibold text-amber-400">
-                  {preview.template === 'pixel-perfect' ? 'Warnings' : 'ATS Warnings'}
-                </span>
+                <span className="text-sm font-semibold text-amber-400">ATS Warnings</span>
               </div>
               {preview.warnings.map((w, i) => (
                 <p key={i} className="text-sm text-amber-300/80">{'\u2022'} {w}</p>
@@ -691,96 +596,37 @@ export default function ResumePage() {
             </div>
           )}
 
-          {/* Minimal mode: full structured editor */}
-          {preview.template !== 'pixel-perfect' && draftResume && (
-            <>
-              <ResumeEditor value={draftResume} onChange={setDraftResume} />
+          <ResumeEditor value={draftResume} onChange={setDraftResume} />
 
-              {preview.changes.length > 0 && (
-                <details className="group bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-                  <summary className="flex items-center justify-between px-5 py-3 cursor-pointer list-none hover:bg-zinc-800/40 transition-colors">
-                    <span className="text-sm font-semibold text-zinc-100">
-                      Claude&apos;s notes ({preview.changes.length} changes)
-                    </span>
-                    <ChevronDown className="w-4 h-4 text-zinc-500 group-open:rotate-180 transition-transform" />
-                  </summary>
-                  <div className="divide-y divide-zinc-800 border-t border-zinc-800">
-                    {preview.changes.map((c, i) => (
-                      <div key={i} className="px-5 py-4">
-                        <div className="flex items-start gap-2 mb-2">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-                          <p className="text-xs text-zinc-500">{c.reason}</p>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                            <p className="text-xs text-red-400 font-medium mb-1 uppercase tracking-wide">Before</p>
-                            <p className="text-xs text-red-300/80 leading-relaxed">{c.original_text}</p>
-                          </div>
-                          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
-                            <p className="text-xs text-emerald-400 font-medium mb-1 uppercase tracking-wide">After</p>
-                            <p className="text-xs text-emerald-300/80 leading-relaxed">{c.replacement_text}</p>
-                          </div>
-                        </div>
+          {preview.changes.length > 0 && (
+            <details className="group bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+              <summary className="flex items-center justify-between px-5 py-3 cursor-pointer list-none hover:bg-zinc-800/40 transition-colors">
+                <span className="text-sm font-semibold text-zinc-100">
+                  Claude&apos;s notes ({preview.changes.length} changes)
+                </span>
+                <ChevronDown className="w-4 h-4 text-zinc-500 group-open:rotate-180 transition-transform" />
+              </summary>
+              <div className="divide-y divide-zinc-800 border-t border-zinc-800">
+                {preview.changes.map((c, i) => (
+                  <div key={i} className="px-5 py-4">
+                    <div className="flex items-start gap-2 mb-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                      <p className="text-xs text-zinc-500">{c.reason}</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                      <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                        <p className="text-xs text-red-400 font-medium mb-1 uppercase tracking-wide">Before</p>
+                        <p className="text-xs text-red-300/80 leading-relaxed">{c.original_text}</p>
                       </div>
-                    ))}
-                  </div>
-                </details>
-              )}
-            </>
-          )}
-
-          {/* Pixel-perfect mode: editable replacement cards */}
-          {preview.template === 'pixel-perfect' && draftReplacements && (
-            <div className="space-y-3">
-              <p className="text-xs text-zinc-500">
-                {draftReplacements.length} text replacement{draftReplacements.length !== 1 ? 's' : ''} proposed.
-                Edit the &ldquo;After&rdquo; text below, then generate the PDF. Your original layout, fonts, and colours are preserved.
-              </p>
-              {draftReplacements.map((r, i) => (
-                <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-                  <div className="flex items-center gap-2 px-4 py-2.5 border-b border-zinc-800">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded">
-                      {r.section}
-                    </span>
-                    <span className="text-xs text-zinc-600 flex-1">{r.reason}</span>
-                    <button
-                      onClick={() =>
-                        setDraftReplacements((prev) =>
-                          prev ? prev.filter((_, j) => j !== i) : prev,
-                        )
-                      }
-                      className="p-1 rounded text-zinc-600 hover:text-red-400 transition-colors"
-                      title="Remove this replacement"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-zinc-800">
-                    <div className="p-4">
-                      <p className="text-[10px] text-red-400 font-semibold mb-1.5 uppercase tracking-wider">Original</p>
-                      <p className="text-xs text-zinc-400 leading-relaxed whitespace-pre-wrap">{r.old}</p>
-                    </div>
-                    <div className="p-4">
-                      <p className="text-[10px] text-emerald-400 font-semibold mb-1.5 uppercase tracking-wider">Replacement</p>
-                      <textarea
-                        className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-colors w-full resize-none leading-relaxed"
-                        rows={Math.max(2, Math.ceil(r.new.length / 60))}
-                        value={r.new}
-                        onChange={(e) =>
-                          setDraftReplacements((prev) =>
-                            prev
-                              ? prev.map((item, j) =>
-                                  j === i ? { ...item, new: e.target.value } : item,
-                                )
-                              : prev,
-                          )
-                        }
-                      />
+                      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
+                        <p className="text-xs text-emerald-400 font-medium mb-1 uppercase tracking-wide">After</p>
+                        <p className="text-xs text-emerald-300/80 leading-relaxed">{c.replacement_text}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </details>
           )}
         </div>
       )}

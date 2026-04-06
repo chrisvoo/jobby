@@ -59,35 +59,6 @@ Respond with ONLY a valid JSON object — no markdown fences, no explanation:
   }
 }`
 
-const PIXEL_PERFECT_PROMPT = `You are an expert resume writer. The user has a beautifully formatted PDF resume and wants to tailor it to a specific job posting WITHOUT changing the layout, fonts, or visual design.
-
-Your job is to propose **surgical text replacements** — each one is an exact "find and replace" that will be applied directly in the PDF. The original formatting (font, size, colour, position) is preserved automatically.
-
-Rules:
-- Each "old" value MUST be an EXACT substring that appears verbatim in the original resume text. Copy it character-for-character.
-- CRITICAL — length constraint: the "new" text MUST NOT exceed the word count of "old" by more than 10%. PDFs have fixed layouts; the replacement is painted into the exact same bounding box as the original text. If "new" is too long, text overflows and gets cut off or rendered at a reduced font size. Prefer slightly shorter or equal-length rewrites.
-- NEVER replace section headers, company names, institution names, dates, or structural text (e.g. "Experience", "Education", "Skills").
-- Focus on: professional summary, bullet points, and skill lists.
-- Retain ONLY information actually present in the original — do not invent experience or credentials.
-- Incorporate relevant keywords from the job posting naturally.
-- Rewrite bullets to be achievement-oriented where possible.
-
-Generate the output filename using the format: FirstName_LastName_JobTitle_Resume.pdf
-
-Respond with ONLY a valid JSON object — no markdown fences, no explanation:
-{
-  "output_filename": "FirstName_LastName_JobTitle_Resume.pdf",
-  "warnings": ["any issues or limitations noticed"],
-  "replacements": [
-    {
-      "section": "summary | experience | skills | other",
-      "old": "exact text from the original resume",
-      "new": "improved replacement text",
-      "reason": "brief explanation"
-    }
-  ]
-}`
-
 interface MinimalResponse {
   output_filename: string
   warnings: string[]
@@ -95,15 +66,9 @@ interface MinimalResponse {
   resume: ResumeData
 }
 
-interface PixelPerfectResponse {
-  output_filename: string
-  warnings: string[]
-  replacements: Array<{ section: string; old: string; new: string; reason: string }>
-}
-
 export async function POST(req: NextRequest) {
   try {
-    const { job_id, job_description, candidate_name, template } = await req.json()
+    const { job_id, job_description, candidate_name } = await req.json()
 
     if (!job_id || !job_description) {
       return NextResponse.json({ error: 'job_id and job_description required' }, { status: 400 })
@@ -133,10 +98,8 @@ export async function POST(req: NextRequest) {
     }
 
     const resumeText = await extractPdfText(resumePath)
-    const isPixelPerfect = template === 'pixel-perfect'
-    const systemPrompt = isPixelPerfect ? PIXEL_PERFECT_PROMPT : MINIMAL_PROMPT
 
-    const prompt = `${systemPrompt}
+    const prompt = `${MINIMAL_PROMPT}
 
 ---
 ORIGINAL RESUME TEXT:
@@ -148,17 +111,6 @@ ${job_description}
 
 ---
 Candidate name hint (for filename): ${candidate_name ?? 'extract from resume'}`
-
-    if (isPixelPerfect) {
-      const result = await askClaudeJSON<PixelPerfectResponse>(prompt)
-      return NextResponse.json({
-        template: 'pixel-perfect',
-        output_filename: result.output_filename,
-        warnings: result.warnings ?? [],
-        replacements: result.replacements ?? [],
-        resume_path: resumePath,
-      })
-    }
 
     const result = await askClaudeJSON<MinimalResponse>(prompt)
     return NextResponse.json({

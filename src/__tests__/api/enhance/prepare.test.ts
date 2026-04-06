@@ -2,7 +2,7 @@
  * Tests for POST /api/enhance/prepare
  *
  * The prepare route queries the DB for a job + resume, extracts PDF text, calls
- * Claude, then returns either a minimal or pixel-perfect preview payload.
+ * Claude, then returns a minimal preview payload.
  * All external I/O is mocked.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -49,12 +49,6 @@ const MINIMAL_CLAUDE_RESPONSE = {
   resume: { name: 'John Doe', experience: [], education: [], skills: [] },
 }
 
-const PIXEL_PERFECT_CLAUDE_RESPONSE = {
-  output_filename: 'John_Doe_Engineer_Resume.pdf',
-  warnings: ['Font may not render perfectly'],
-  replacements: [{ section: 'summary', old: 'old text', new: 'new text', reason: 'tailored' }],
-}
-
 function makeRequest(body: object): NextRequest {
   return new NextRequest('http://localhost/api/enhance/prepare', {
     method: 'POST',
@@ -65,7 +59,6 @@ function makeRequest(body: object): NextRequest {
 
 beforeEach(async () => {
   vi.clearAllMocks()
-  // existsSync defaults to true; tests that need false override it individually
   const { default: fs } = await import('fs')
   vi.mocked(fs.existsSync).mockReturnValue(true)
   mockRunAndReadAll
@@ -91,7 +84,7 @@ describe('POST /api/enhance/prepare — input validation', () => {
   })
 })
 
-describe('POST /api/enhance/prepare — minimal template (default)', () => {
+describe('POST /api/enhance/prepare — minimal template', () => {
   it('returns 200 with changes and resume data', async () => {
     mockAskClaudeJSON.mockResolvedValue(MINIMAL_CLAUDE_RESPONSE)
 
@@ -114,22 +107,6 @@ describe('POST /api/enhance/prepare — minimal template (default)', () => {
     const res = await POST(makeRequest({ job_id: 'job-1', job_description: 'desc' }))
     const body = await res.json()
     expect(body.changes).toEqual([])
-  })
-})
-
-describe('POST /api/enhance/prepare — pixel-perfect template', () => {
-  it('returns 200 with replacements array', async () => {
-    mockAskClaudeJSON.mockResolvedValue(PIXEL_PERFECT_CLAUDE_RESPONSE)
-
-    const res = await POST(
-      makeRequest({ job_id: 'job-1', job_description: 'Build things', template: 'pixel-perfect' }),
-    )
-    expect(res.status).toBe(200)
-
-    const body = await res.json()
-    expect(body.template).toBe('pixel-perfect')
-    expect(body.replacements).toHaveLength(1)
-    expect(body.resume_path).toBe('/tmp/data/uploads/resumes/res-1.pdf')
   })
 })
 

@@ -6,14 +6,19 @@ import {
 } from '@/lib/resume-templates'
 
 describe('RESUME_TEMPLATES', () => {
-  it('contains exactly two templates', () => {
-    expect(RESUME_TEMPLATES).toHaveLength(2)
+  it('contains at least one template', () => {
+    expect(RESUME_TEMPLATES.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('includes minimal and pixel-perfect ids', () => {
+  it('includes the sidebar and modern ids', () => {
+    const ids = RESUME_TEMPLATES.map((t) => t.id)
+    expect(ids).toContain('sidebar')
+    expect(ids).toContain('modern')
+  })
+
+  it('includes the minimal id', () => {
     const ids = RESUME_TEMPLATES.map((t) => t.id)
     expect(ids).toContain('minimal')
-    expect(ids).toContain('pixel-perfect')
   })
 
   it('every template has id, name, and description', () => {
@@ -40,8 +45,8 @@ describe('isValidTemplateId', () => {
     expect(isValidTemplateId('minimal')).toBe(true)
   })
 
-  it('returns true for "pixel-perfect"', () => {
-    expect(isValidTemplateId('pixel-perfect')).toBe(true)
+  it('returns false for "pixel-perfect"', () => {
+    expect(isValidTemplateId('pixel-perfect')).toBe(false)
   })
 
   it('returns false for an unknown id', () => {
@@ -54,6 +59,5 @@ describe('isValidTemplateId', () => {
 
   it('is case-sensitive', () => {
     expect(isValidTemplateId('Minimal')).toBe(false)
-    expect(isValidTemplateId('PIXEL-PERFECT')).toBe(false)
   })
 })
