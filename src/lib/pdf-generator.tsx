@@ -9,6 +9,7 @@ import {
 } from '@react-pdf/renderer'
 
 import type { ResumeData } from '@/lib/types'
+import type { TemplateId } from '@/lib/resume-templates'
 
 export type { ResumeData }
 
@@ -211,6 +212,8 @@ function ResumeDoc({ data }: { data: ResumeData }) {
   )
 }
 
-export async function generateResumePDF(data: ResumeData): Promise<Buffer> {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function generateResumePDF(data: ResumeData, _templateId: TemplateId = 'minimal'): Promise<Buffer> {
+  // Currently only the 'minimal' template exists; templateId is reserved for future variants.
   return renderToBuffer(<ResumeDoc data={data} />) as Promise<Buffer>
 }

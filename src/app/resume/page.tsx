@@ -9,6 +9,8 @@ import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ResumeEditor } from '@/components/resume-editor'
+import { RESUME_TEMPLATES, DEFAULT_TEMPLATE_ID } from '@/lib/resume-templates'
+import type { TemplateId } from '@/lib/resume-templates'
 import type { Job, JobStatus, Resume, ExtractedJobFields, ResumeData } from '@/lib/types'
 
 interface PrepareResult {
@@ -53,6 +55,8 @@ export default function ResumePage() {
   const [confirming, setConfirming] = useState(false)
   const [finalResult, setFinalResult] = useState<{ filename: string; download_url: string } | null>(null)
   const [lsLoaded, setLsLoaded] = useState(false)
+
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>(DEFAULT_TEMPLATE_ID)
 
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [quickAddForm, setQuickAddForm] = useState<QuickAddForm>(defaultQuickAdd())
@@ -338,6 +342,7 @@ export default function ResumePage() {
           job_id: selectedJobId,
           resume: draftResume,
           output_filename: preview.output_filename,
+          template: selectedTemplate,
         }),
       })
       if (!res.ok) throw new Error(await res.text())
@@ -443,6 +448,33 @@ export default function ResumePage() {
                 Add jobs in the Jobs tab first.
               </p>
             )}
+          </div>
+
+          {/* Template picker */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+            <h2 className="text-sm font-semibold text-zinc-100 mb-3">Resume Template</h2>
+            <div className="space-y-2">
+              {RESUME_TEMPLATES.map((tpl) => (
+                <button
+                  key={tpl.id}
+                  type="button"
+                  onClick={() => setSelectedTemplate(tpl.id as TemplateId)}
+                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                    selectedTemplate === tpl.id
+                      ? 'border-indigo-500/60 bg-indigo-500/10'
+                      : 'border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${
+                      selectedTemplate === tpl.id ? 'bg-indigo-400' : 'bg-zinc-600'
+                    }`} />
+                    <span className="text-sm font-medium text-zinc-100">{tpl.name}</span>
+                  </div>
+                  <p className="text-xs text-zinc-500 leading-relaxed pl-4">{tpl.description}</p>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

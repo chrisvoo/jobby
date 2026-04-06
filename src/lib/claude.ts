@@ -1,7 +1,7 @@
 import { query, type SDKAssistantMessage } from '@anthropic-ai/claude-agent-sdk'
 import { readConfig } from './app-config'
 
-const TIMEOUT_MS = 120_000
+const TIMEOUT_MS = 300_000 // 5 minutes — resume enhancement is a heavy multi-step task
 
 /**
  * Sends a prompt to Claude via the claude-agent-sdk and returns the text response.
@@ -13,7 +13,7 @@ export async function askClaude(prompt: string, model?: string): Promise<string>
   const effectiveModel = model ?? readConfig().claude_model
 
   const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('Claude timed out after 2 minutes')), TIMEOUT_MS),
+    setTimeout(() => reject(new Error('Claude timed out after 5 minutes')), TIMEOUT_MS),
   )
 
   const queryPromise = (async () => {

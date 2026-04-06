@@ -3,6 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { getDb } from '@/lib/db'
 import { generateResumePDF } from '@/lib/pdf-generator'
+import { isValidTemplateId, DEFAULT_TEMPLATE_ID } from '@/lib/resume-templates'
 import type { ResumeData } from '@/lib/types'
 
 const DATA_DIR = process.env.DUCKDB_PATH
@@ -11,17 +12,19 @@ const DATA_DIR = process.env.DUCKDB_PATH
 
 export async function POST(req: NextRequest) {
   try {
-    const { job_id, resume, output_filename } = await req.json() as {
+    const { job_id, resume, output_filename, template } = await req.json() as {
       job_id: string
       resume: ResumeData
       output_filename: string
+      template?: string
     }
 
     if (!job_id || !resume) {
       return NextResponse.json({ error: 'job_id and resume are required' }, { status: 400 })
     }
 
-    const pdfBuffer = await generateResumePDF(resume)
+    const templateId = template && isValidTemplateId(template) ? template : DEFAULT_TEMPLATE_ID
+    const pdfBuffer = await generateResumePDF(resume, templateId)
 
     const adaptedDir = path.join(DATA_DIR, 'uploads', 'adapted')
     if (!fs.existsSync(adaptedDir)) fs.mkdirSync(adaptedDir, { recursive: true })

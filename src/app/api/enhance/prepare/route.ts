@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
 
 ---
 ORIGINAL RESUME TEXT:
-${resumeText.slice(0, 8000)}
+${resumeText.slice(0, 16000)}
 
 ---
 JOB DESCRIPTION:

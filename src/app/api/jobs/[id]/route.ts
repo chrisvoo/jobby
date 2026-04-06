@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import fs from 'fs'
 import { getDb, toISO, parseSalary } from '@/lib/db'
 import type { Job, UpdateJobInput } from '@/lib/types'
 
@@ -82,7 +83,21 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   try {
     const { id } = await params
     const conn = await getDb()
+
+    const result = await conn.runAndReadAll(`SELECT resume_path FROM jobs WHERE id = '${id}'`)
+    const rows = result.getRowObjects()
+    const resumePath = rows[0]?.resume_path ? String(rows[0].resume_path) : null
+
     await conn.run(`DELETE FROM jobs WHERE id = '${id}'`)
+
+    if (resumePath) {
+      try {
+        fs.unlinkSync(resumePath)
+      } catch {
+        // File already gone or inaccessible — not a hard failure
+      }
+    }
+
     return new NextResponse(null, { status: 204 })
   } catch (err) {
     console.error(err)
