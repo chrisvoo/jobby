@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   Database, Folder, ChevronRight, ArrowUp, X,
   Check, AlertTriangle, RotateCcw, Loader2, Bot, RefreshCw,
+  DollarSign, ChevronDown,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { CLAUDE_MODELS, DEFAULT_CLAUDE_MODEL, type ClaudeModel } from '@/lib/claude-models'
@@ -83,6 +84,112 @@ function dirOf(filePath: string): string {
   return lastSlash > 0 ? filePath.slice(0, lastSlash) : '/'
 }
 
+// ── Currency combobox ────────────────────────────────────────────
+
+interface CurrencyComboboxProps {
+  value: string
+  onChange: (code: string) => void
+  currencies: Record<string, string>
+  loading: boolean
+  id?: string
+}
+
+function CurrencyCombobox({ value, onChange, currencies, loading, id }: CurrencyComboboxProps) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const containerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const entries = Object.entries(currencies)
+  const filtered = query
+    ? entries.filter(([code, name]) =>
+        code.toLowerCase().includes(query.toLowerCase()) ||
+        name.toLowerCase().includes(query.toLowerCase()),
+      )
+    : entries
+
+  const displayLabel = value
+    ? `${value}${currencies[value] ? ` — ${currencies[value]}` : ''}`
+    : ''
+
+  // Close on outside click
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+        setQuery('')
+      }
+    }
+    document.addEventListener('mousedown', handle)
+    return () => document.removeEventListener('mousedown', handle)
+  }, [])
+
+  function select(code: string) {
+    onChange(code)
+    setOpen(false)
+    setQuery('')
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        id={id}
+        type="button"
+        onClick={() => {
+          setOpen((o) => !o)
+          if (!open) setTimeout(() => inputRef.current?.focus(), 50)
+        }}
+        className="w-full flex items-center justify-between gap-2 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-left transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 hover:border-zinc-600"
+      >
+        {loading ? (
+          <span className="flex items-center gap-2 text-zinc-500">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />Loading currencies…
+          </span>
+        ) : (
+          <span className={value ? 'text-zinc-100 font-mono' : 'text-zinc-500'}>
+            {displayLabel || 'Select a currency'}
+          </span>
+        )}
+        <ChevronDown className="w-4 h-4 text-zinc-500 shrink-0" />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden">
+          <div className="p-2 border-b border-zinc-800">
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by code or name…"
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+            />
+          </div>
+          <ul className="max-h-56 overflow-y-auto py-1">
+            {filtered.length === 0 && (
+              <li className="px-3 py-4 text-center text-zinc-500 text-sm">No currencies found</li>
+            )}
+            {filtered.map(([code, name]) => (
+              <li key={code}>
+                <button
+                  type="button"
+                  onClick={() => select(code)}
+                  className={`w-full flex items-center gap-3 px-3 py-2 text-sm text-left transition-colors hover:bg-zinc-800 ${
+                    code === value ? 'text-indigo-300 bg-indigo-500/10' : 'text-zinc-200'
+                  }`}
+                >
+                  <span className="font-mono w-10 shrink-0 text-zinc-400">{code}</span>
+                  <span className="truncate">{name}</span>
+                  {code === value && <Check className="w-3.5 h-3.5 ml-auto shrink-0 text-indigo-400" />}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Config page ──────────────────────────────────────────────────
 
 export default function ConfigPage() {
@@ -100,10 +207,26 @@ export default function ConfigPage() {
   const [modelsLastSync, setModelsLastSync] = useState<number | null>(null)
   const [modelsSource, setModelsSource]     = useState<'live' | 'fallback' | null>(null)
 
+  // ── Currency settings ──────────────────────────────────────────
+  const [targetCurrency, setTargetCurrency] = useState('EUR')
+  const [savedCurrency, setSavedCurrency]   = useState('EUR')
+  const [currencies, setCurrencies]         = useState<Record<string, string>>({})
+  const [currenciesLoading, setCurrenciesLoading] = useState(false)
+
   // ── Directory browser ──────────────────────────────────────────
   const [browseOpen, setBrowseOpen]     = useState(false)
   const [browseData, setBrowseData]     = useState<BrowseResult | null>(null)
   const [browseLoading, setBrowseLoading] = useState(false)
+
+  // ── Fetch currency list ────────────────────────────────────────
+  useEffect(() => {
+    setCurrenciesLoading(true)
+    fetch('/api/rates?currencies=true')
+      .then((r) => r.json())
+      .then((data: Record<string, string>) => setCurrencies(data))
+      .catch(() => {})
+      .finally(() => setCurrenciesLoading(false))
+  }, [])
 
   // ── Fetch model list from support page (or serve from cache) ───
   const fetchModels = useCallback(async (force = false) => {
@@ -147,6 +270,8 @@ export default function ConfigPage() {
         setSavedPath(data.duckdb_path ?? '')
         setClaudeModel(data.claude_model ?? DEFAULT_CLAUDE_MODEL)
         setSavedModel(data.claude_model ?? DEFAULT_CLAUDE_MODEL)
+        setTargetCurrency(data.target_currency ?? 'EUR')
+        setSavedCurrency(data.target_currency ?? 'EUR')
       })
       .catch(() => {})
 
@@ -160,12 +285,17 @@ export default function ConfigPage() {
       const res  = await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ duckdb_path: duckdbPath, claude_model: claudeModel }),
+        body: JSON.stringify({
+          duckdb_path: duckdbPath,
+          claude_model: claudeModel,
+          target_currency: targetCurrency,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setSavedPath(duckdbPath)
       setSavedModel(claudeModel)
+      setSavedCurrency(targetCurrency)
       setRestartRequired(data.restart_required ?? false)
       toast.success('Configuration saved')
     } catch (err) {
@@ -200,7 +330,10 @@ export default function ConfigPage() {
     setBrowseOpen(false)
   }
 
-  const isDirty = duckdbPath !== savedPath || claudeModel !== savedModel
+  const isDirty =
+    duckdbPath !== savedPath ||
+    claudeModel !== savedModel ||
+    targetCurrency !== savedCurrency
 
   return (
     <div className="space-y-8 max-w-2xl">
@@ -296,13 +429,11 @@ export default function ConfigPage() {
                     : 'bg-zinc-800/40 border-zinc-700/60 hover:border-zinc-600 hover:bg-zinc-800'
                 }`}
               >
-                {/* Radio dot */}
                 <span className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
                   claudeModel === m.id ? 'border-indigo-400' : 'border-zinc-600'
                 }`}>
                   {claudeModel === m.id && <span className="w-2 h-2 rounded-full bg-indigo-400" />}
                 </span>
-
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`text-sm font-medium ${claudeModel === m.id ? 'text-zinc-100' : 'text-zinc-300'}`}>
@@ -323,7 +454,6 @@ export default function ConfigPage() {
             ))
           )}
 
-          {/* Show selected model if it's not in the fetched list (custom / unknown) */}
           {!modelsLoading && !models.find((m) => m.id === claudeModel) && claudeModel && (
             <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-zinc-700/60 bg-zinc-800/40">
               <span className="mt-0.5 w-4 h-4 rounded-full border-2 border-indigo-400 flex items-center justify-center shrink-0">
@@ -335,6 +465,40 @@ export default function ConfigPage() {
               </div>
             </div>
           )}
+        </div>
+      </section>
+
+      {/* ── Currency ── */}
+      <section className="bg-zinc-900 border border-zinc-800 rounded-xl">
+        <div className="px-5 py-4 border-b border-zinc-800 flex items-center gap-3 rounded-t-xl">
+          <DollarSign className="w-4 h-4 text-emerald-400" />
+          <div>
+            <h2 className="text-sm font-semibold text-zinc-100">Currency</h2>
+            <p className="text-xs text-zinc-500 mt-0.5">Default target currency for salary conversion</p>
+          </div>
+        </div>
+        <div className="px-5 py-5">
+          <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">
+            Target Currency
+          </label>
+          <CurrencyCombobox
+            value={targetCurrency}
+            onChange={setTargetCurrency}
+            currencies={currencies}
+            loading={currenciesLoading}
+          />
+          <p className="text-xs text-zinc-600 mt-2">
+            Used as the default "convert to" currency in the Utils page. Rates sourced from{' '}
+            <a
+              href="https://www.frankfurter.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-zinc-500 hover:text-zinc-300 underline"
+            >
+              Frankfurter
+            </a>{' '}
+            (ECB + 40+ central banks, no API key required).
+          </p>
         </div>
       </section>
 
@@ -350,7 +514,12 @@ export default function ConfigPage() {
         </button>
         {isDirty && (
           <button
-            onClick={() => { setDuckdbPath(savedPath); setClaudeModel(savedModel); setRestartRequired(false) }}
+            onClick={() => {
+              setDuckdbPath(savedPath)
+              setClaudeModel(savedModel)
+              setTargetCurrency(savedCurrency)
+              setRestartRequired(false)
+            }}
             className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
           >
             <RotateCcw className="w-3.5 h-3.5" />

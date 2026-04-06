@@ -3,13 +3,14 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Briefcase, FileText, Info, Menu, X, Settings } from 'lucide-react'
+import { LayoutDashboard, Briefcase, FileText, Info, Menu, X, Settings, Calculator } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/jobs', label: 'Jobs', icon: Briefcase },
   { href: '/resume', label: 'Resume', icon: FileText },
+  { href: '/utils', label: 'Utils', icon: Calculator },
   { href: '/config', label: 'Settings', icon: Settings },
   { href: '/about', label: 'About', icon: Info },
 ]

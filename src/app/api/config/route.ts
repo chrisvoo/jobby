@@ -8,37 +8,51 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json() as { duckdb_path?: string; claude_model?: string }
+  const body = await req.json()
+  const {
+    duckdb_path,
+    claude_model,
+    target_currency,
+  } = body as {
+    duckdb_path?: string
+    claude_model?: string
+    target_currency?: string
+  }
 
   const current = readConfig()
 
-  // ── Validate duckdb_path ──────────────────────────────────────
-  const duckdb_path = body.duckdb_path ?? current.duckdb_path
-  const dir = path.dirname(duckdb_path)
+  if (duckdb_path !== undefined) {
+    if (!duckdb_path || typeof duckdb_path !== 'string') {
+      return NextResponse.json({ error: 'duckdb_path is required' }, { status: 400 })
+    }
 
-  if (!fs.existsSync(dir)) {
-    return NextResponse.json({ error: `Directory does not exist: ${dir}` }, { status: 400 })
-  }
-  try {
-    fs.accessSync(dir, fs.constants.W_OK)
-  } catch {
-    return NextResponse.json({ error: `Directory is not writable: ${dir}` }, { status: 400 })
-  }
+    const dir = path.dirname(duckdb_path)
 
-  // ── Validate claude_model ─────────────────────────────────────
-  // Accept any non-empty string starting with "claude-" so that newly released
-  // models fetched from the support page are not rejected by a hardcoded list.
-  const claude_model = body.claude_model ?? current.claude_model
-  if (!claude_model || typeof claude_model !== 'string' || !claude_model.startsWith('claude-')) {
-    return NextResponse.json(
-      { error: `Invalid model ID "${claude_model}". Must start with "claude-"` },
-      { status: 400 },
-    )
+    if (!fs.existsSync(dir)) {
+      return NextResponse.json({ error: `Directory does not exist: ${dir}` }, { status: 400 })
+    }
+
+    try {
+      fs.accessSync(dir, fs.constants.W_OK)
+    } catch {
+      return NextResponse.json({ error: `Directory is not writable: ${dir}` }, { status: 400 })
+    }
   }
 
-  writeConfig({ duckdb_path, claude_model })
+  if (target_currency !== undefined) {
+    if (!/^[A-Z]{3}$/.test(target_currency)) {
+      return NextResponse.json({ error: 'target_currency must be a 3-letter ISO currency code' }, { status: 400 })
+    }
+  }
 
-  const dbPathChanged = duckdb_path !== current.duckdb_path
+  writeConfig({
+    duckdb_path: duckdb_path ?? current.duckdb_path,
+    claude_model: claude_model ?? current.claude_model,
+    target_currency: target_currency ?? current.target_currency,
+  })
 
-  return NextResponse.json({ success: true, restart_required: dbPathChanged })
+  return NextResponse.json({
+    success: true,
+    restart_required: duckdb_path !== undefined && duckdb_path !== current.duckdb_path,
+  })
 }

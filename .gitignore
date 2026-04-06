@@ -2,6 +2,9 @@
 node_modules/
 .next/
 
+# TypeScript build cache
+*.tsbuildinfo
+
 # Data (persisted locally, never committed)
 data/app.db
 data/uploads/resumes/*.pdf
