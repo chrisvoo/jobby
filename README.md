@@ -83,19 +83,15 @@ docker compose -f docker-compose.dev.yml down
    - Generates a tailored PDF
    - Lets you review and edit before downloading
 
-Two enhancement modes:
+Claude returns structured JSON for the enhanced resume; a new PDF is generated from scratch with a clean Helvetica layout optimised for ATS compatibility.
 
-| Mode | What happens | Best for |
-|---|---|---|
-| **Minimal** | Claude returns structured JSON; a new PDF is generated from scratch with a clean Helvetica layout | Maximum ATS compatibility |
-| **Pixel-Perfect** | Claude proposes surgical text replacements; PyMuPDF applies them directly in your original PDF, preserving fonts, colours, and layout | Professionally designed resumes |
+> **Note:** An earlier approach used PyMuPDF to apply in-place text replacements directly onto the original PDF (preserving the original design). It was abandoned due to persistent issues: replaced spans lost their original font styles, text overflowed bounding boxes, and overlapping characters made the output unreadable. Generating a fresh PDF proved far more reliable.
 
 ## Architecture
 
 ```
 docker compose up
-  ├── node     (Next.js :3000)  -- UI, API routes, Claude calls
-  └── python   (PyMuPDF :5001)  -- PDF text replacement (internal only)
+  └── node     (Next.js :3000)  -- UI, API routes, Claude calls
 
 Host mounts:
   ~/.claude.json  ->  container (read-only auth)
@@ -110,7 +106,7 @@ Host mounts:
 | Database | DuckDB (embedded, file-based) |
 | PDF text extraction | unpdf (Mozilla PDF.js) |
 | AI | Claude Agent SDK (no API key) |
-| PDF generation | @react-pdf/renderer (Minimal) / PyMuPDF (Pixel-Perfect) |
+| PDF generation | @react-pdf/renderer |
 | Containerisation | Docker Compose |
 
 ## Project structure
