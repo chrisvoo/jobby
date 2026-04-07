@@ -92,10 +92,15 @@ export function toISO(value: unknown): string {
 }
 
 // Parse DuckDB INTEGER[] back to [number, number] | null
+// @duckdb/node-api returns list types as DuckDBListValue { items: [...] }, not a plain JS array
 export function parseSalary(value: unknown): [number, number] | null {
   if (!value) return null
-  if (Array.isArray(value) && value.length === 2) {
-    return [Number(value[0]), Number(value[1])]
+  const items =
+    Array.isArray(value)
+      ? value
+      : (value as { items?: unknown[] })?.items
+  if (Array.isArray(items) && items.length === 2) {
+    return [Number(items[0]), Number(items[1])]
   }
   return null
 }
