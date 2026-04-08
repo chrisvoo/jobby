@@ -24,7 +24,9 @@ Dense facts for coding agents. Source: repo + prior Cursor transcripts.
 | `src/lib/resume-templates.ts` | Canonical template id: **`minimal`**; `DEFAULT_TEMPLATE_ID = 'minimal'`. |
 | `docker-compose.yml` / `docker-compose.dev.yml` | Prod vs dev stacks; see Run section. |
 | `Dockerfile.node` / `Dockerfile.node.dev` | Prod standalone Next build vs `next dev`. |
-| `start.sh` | Preconditions, **macOS Keychain → `.credentials.json` export**, compose up, open browser. |
+| `scripts/start.sh` | Preconditions, **macOS Keychain → `.credentials.json` export**, compose up, open browser. |
+| `scripts/start.bat` | Windows equivalent of `start.sh`. |
+| `scripts/export-credentials.sh` | Standalone macOS Keychain → `~/.claude/.credentials.json` re-export (no-op on Linux). |
 
 ## Enhancement flow: Minimal
 
@@ -42,7 +44,7 @@ Dense facts for coding agents. Source: repo + prior Cursor transcripts.
 
 - **Prod compose** mounts **`${HOME}/.claude.json` → `/home/nextjs/.claude.json`** and **`${HOME}/.claude/.credentials.json` → `/home/nextjs/.claude/.credentials.json`** (read-only). Runner user **nextjs** (uid 1001).
 - **Dev compose** mounts same files to **`/root/.`** — `Dockerfile.node.dev` runs as root; matches SDK path expectations inside container.
-- **macOS**: OAuth tokens often live in **Keychain**; containers cannot read Keychain. **`start.sh`** runs `security find-generic-password -a "$USER" -s "Claude Code-credentials" -w` and writes **`~/.claude/.credentials.json`** (chmod 600) so the SDK fallback works when bind-mounted.
+- **macOS**: OAuth tokens often live in **Keychain**; containers cannot read Keychain. **`scripts/start.sh`** runs `security find-generic-password -a "$USER" -s "Claude Code-credentials" -w` and writes **`~/.claude/.credentials.json`** (chmod 600) so the SDK fallback works when bind-mounted. **`scripts/export-credentials.sh`** does the same export standalone (for token refresh without full restart).
 - **Linux host**: may already have plaintext credentials under `~/.claude/`; script mostly no-ops except file check.
 - **Troubleshooting (from transcripts)**: stale **`customApiKeyResponses.approved`** in `~/.claude.json` can force bad auth paths — clearing/fixing CLI auth may be required; surface **`auth_status`** errors from SDK in UI where possible.
 
@@ -58,8 +60,8 @@ Dense facts for coding agents. Source: repo + prior Cursor transcripts.
 ## Run: dev vs prod
 
 - **Local (no Docker)**: `npm install` → `npm run dev` (port 3000). Ensure `claude` CLI logged in.
-- **Docker prod**: `./start.sh` or `docker compose up --build -d` — uses **`Dockerfile.node`** (standalone output). Requires **`~/.claude.json`** and exportable **`.credentials.json`** (see `start.sh`).
-- **Docker dev**: `./start.sh --dev` or `docker compose -f docker-compose.dev.yml up --build -d` — bind-mount **`.` → `/app`**, named volume **`node_modules`**, **`WATCHPACK_POLLING`** in dev image for file watching.
+- **Docker prod**: `./scripts/start.sh` or `docker compose up --build -d` — uses **`Dockerfile.node`** (standalone output). Requires **`~/.claude.json`** and exportable **`.credentials.json`** (see `scripts/start.sh`).
+- **Docker dev**: `./scripts/start.sh --dev` or `docker compose -f docker-compose.dev.yml up --build -d` — bind-mount **`.` → `/app`**, named volume **`node_modules`**, **`WATCHPACK_POLLING`** in dev image for file watching.
 
 ## Database schema (baseline)
 

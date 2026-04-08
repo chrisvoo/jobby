@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
 # ── Parse flags ──────────────────────────────────────────────
 DEV=false
@@ -73,7 +73,7 @@ if [ "$DEV" = true ]; then
   echo "  Edit files locally — changes are picked up automatically."
   echo "  Logs:                      docker compose -f docker-compose.dev.yml logs -f node"
   echo "  Stop:                      docker compose -f docker-compose.dev.yml down"
-  echo "  Rebuild images:            ./start.sh --dev --build"
+  echo "  Rebuild images:            ./scripts/start.sh --dev --build"
 else
   echo "Starting Jobby..."
   # shellcheck disable=SC2086
@@ -81,7 +81,7 @@ else
   echo ""
   echo "  Jobby is running at  http://localhost:3000"
   echo "  Stop with:           docker compose down"
-  echo "  Rebuild images:      ./start.sh --build"
+  echo "  Rebuild images:      ./scripts/start.sh --build"
 fi
 echo ""
 

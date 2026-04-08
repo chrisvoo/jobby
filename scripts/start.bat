@@ -1,5 +1,5 @@
 @echo off
-cd /d "%~dp0"
+cd /d "%~dp0\.."
 
 :: ── Parse flags ──────────────────────────────────────────────
 set DEV=false
