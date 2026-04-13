@@ -50,6 +50,11 @@ let _migrationsRan = false
 async function runMigrations(conn: Awaited<ReturnType<DuckDBInstance['connect']>>) {
   if (_migrationsRan) return
   await conn.run(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS description TEXT`)
+  await conn.run(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS salary_currency VARCHAR`)
+  // Flush all WAL entries into the main DB file so that a clean container restart
+  // never has to replay ALTER TABLE statements (DuckDB has a WAL replay bug where
+  // ALTER TABLE ADD COLUMN fails if the table has columns with DEFAULT expressions).
+  await conn.run(`CHECKPOINT`)
   _migrationsRan = true
 }
 

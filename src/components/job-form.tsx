@@ -7,6 +7,24 @@ import type { Job, JobStatus, Resume } from '@/lib/types'
 
 const STATUS_OPTIONS: JobStatus[] = ['applied', 'interview', 'offer', 'rejected']
 
+const CURRENCY_OPTIONS = [
+  { code: 'EUR', label: 'EUR — Euro' },
+  { code: 'USD', label: 'USD — US Dollar' },
+  { code: 'GBP', label: 'GBP — British Pound' },
+  { code: 'CHF', label: 'CHF — Swiss Franc' },
+  { code: 'CAD', label: 'CAD — Canadian Dollar' },
+  { code: 'AUD', label: 'AUD — Australian Dollar' },
+  { code: 'NZD', label: 'NZD — New Zealand Dollar' },
+  { code: 'SEK', label: 'SEK — Swedish Krona' },
+  { code: 'NOK', label: 'NOK — Norwegian Krone' },
+  { code: 'DKK', label: 'DKK — Danish Krone' },
+  { code: 'PLN', label: 'PLN — Polish Zloty' },
+  { code: 'BRL', label: 'BRL — Brazilian Real' },
+  { code: 'INR', label: 'INR — Indian Rupee' },
+  { code: 'SGD', label: 'SGD — Singapore Dollar' },
+  { code: 'JPY', label: 'JPY — Japanese Yen' },
+]
+
 interface Props {
   job?: Job
   resumes: Resume[]
@@ -26,6 +44,8 @@ export function JobForm({ job, resumes, onSuccess }: Props) {
     notes: job?.notes ?? '',
     salary_min: job?.gross_annual_salary?.[0]?.toString() ?? '',
     salary_max: job?.gross_annual_salary?.[1]?.toString() ?? '',
+    // Default to EUR when job has salary but no currency recorded
+    salary_currency: job?.salary_currency ?? (job?.gross_annual_salary ? 'EUR' : ''),
     base_resume_id: job?.base_resume_id ?? '',
   })
 
@@ -43,6 +63,7 @@ export function JobForm({ job, resumes, onSuccess }: Props) {
 
     setLoading(true)
     try {
+      const hasSalary = Boolean(form.salary_min || form.salary_max)
       const body = {
         company: form.company.trim(),
         role: form.role.trim(),
@@ -52,6 +73,7 @@ export function JobForm({ job, resumes, onSuccess }: Props) {
         notes: form.notes.trim() || undefined,
         salary_min: form.salary_min ? Number(form.salary_min) : undefined,
         salary_max: form.salary_max ? Number(form.salary_max) : undefined,
+        salary_currency: hasSalary ? (form.salary_currency || 'EUR') : undefined,
         base_resume_id: form.base_resume_id || undefined,
       }
 
@@ -131,7 +153,7 @@ export function JobForm({ job, resumes, onSuccess }: Props) {
         </Field>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Field label="Salary Min (annual)">
           <input
             type="number"
@@ -149,6 +171,18 @@ export function JobForm({ job, resumes, onSuccess }: Props) {
             placeholder="80000"
             className={inputCls}
           />
+        </Field>
+        <Field label="Currency">
+          <select
+            value={form.salary_currency}
+            onChange={(e) => set('salary_currency', e.target.value)}
+            className={inputCls}
+          >
+            <option value="">—</option>
+            {CURRENCY_OPTIONS.map((c) => (
+              <option key={c.code} value={c.code}>{c.label}</option>
+            ))}
+          </select>
         </Field>
       </div>
 

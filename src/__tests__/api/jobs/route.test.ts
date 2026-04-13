@@ -57,6 +57,7 @@ const DB_ROW = {
   notes: null,
   description: 'Build things',
   gross_annual_salary: [80000, 100000],
+  salary_currency: 'USD',
   base_resume_id: 'resume-abc',
   resume_path: null,
 }
@@ -79,6 +80,17 @@ describe('GET /api/jobs/[id]', () => {
     expect(body.company).toBe('Acme')
     expect(body.role).toBe('Engineer')
     expect(body.gross_annual_salary).toEqual([80000, 100000])
+    expect(body.salary_currency).toBe('USD')
+  })
+
+  it('returns null salary_currency when not set in DB', async () => {
+    mockRunAndReadAll.mockResolvedValue({
+      getRowObjects: () => [{ ...DB_ROW, salary_currency: null }],
+    })
+
+    const res = await GET(makeRequest('GET'), PARAMS)
+    const body = await res.json()
+    expect(body.salary_currency).toBeNull()
   })
 
   it('returns 404 when job does not exist', async () => {
@@ -125,6 +137,34 @@ describe('PATCH /api/jobs/[id]', () => {
 
     const [[sql]] = mockRun.mock.calls
     expect(sql).toContain("O''Brien Corp")
+  })
+
+  it('updates salary_currency when provided', async () => {
+    mockRun.mockResolvedValue(undefined)
+    mockRunAndReadAll.mockResolvedValue({
+      getRowObjects: () => [{ ...DB_ROW, salary_currency: 'EUR' }],
+    })
+
+    const res = await PATCH(makeRequest('PATCH', { salary_currency: 'EUR' }), PARAMS)
+    expect(res.status).toBe(200)
+
+    const body = await res.json()
+    expect(body.salary_currency).toBe('EUR')
+
+    const [[sql]] = mockRun.mock.calls
+    expect(sql).toContain("salary_currency = 'EUR'")
+  })
+
+  it('clears salary_currency when passed as empty string', async () => {
+    mockRun.mockResolvedValue(undefined)
+    mockRunAndReadAll.mockResolvedValue({
+      getRowObjects: () => [{ ...DB_ROW, salary_currency: null }],
+    })
+
+    await PATCH(makeRequest('PATCH', { salary_currency: '' }), PARAMS)
+
+    const [[sql]] = mockRun.mock.calls
+    expect(sql).toContain('salary_currency = NULL')
   })
 
   it('returns 500 on DB error', async () => {

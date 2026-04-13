@@ -21,6 +21,24 @@ interface PrepareResult {
   resume: ResumeData
 }
 
+const CURRENCY_OPTIONS = [
+  { code: 'EUR', label: 'EUR — Euro' },
+  { code: 'USD', label: 'USD — US Dollar' },
+  { code: 'GBP', label: 'GBP — British Pound' },
+  { code: 'CHF', label: 'CHF — Swiss Franc' },
+  { code: 'CAD', label: 'CAD — Canadian Dollar' },
+  { code: 'AUD', label: 'AUD — Australian Dollar' },
+  { code: 'NZD', label: 'NZD — New Zealand Dollar' },
+  { code: 'SEK', label: 'SEK — Swedish Krona' },
+  { code: 'NOK', label: 'NOK — Norwegian Krone' },
+  { code: 'DKK', label: 'DKK — Danish Krone' },
+  { code: 'PLN', label: 'PLN — Polish Zloty' },
+  { code: 'BRL', label: 'BRL — Brazilian Real' },
+  { code: 'INR', label: 'INR — Indian Rupee' },
+  { code: 'SGD', label: 'SGD — Singapore Dollar' },
+  { code: 'JPY', label: 'JPY — Japanese Yen' },
+]
+
 interface QuickAddForm {
   company: string
   role: string
@@ -28,6 +46,7 @@ interface QuickAddForm {
   status: JobStatus
   salary_min: string
   salary_max: string
+  salary_currency: string
   notes: string
   applied_at: string
 }
@@ -36,7 +55,7 @@ const LS_KEY = 'jobby_resume_form'
 
 const defaultQuickAdd = (): QuickAddForm => ({
   company: '', role: '', url: '', status: 'applied',
-  salary_min: '', salary_max: '', notes: '',
+  salary_min: '', salary_max: '', salary_currency: '', notes: '',
   applied_at: new Date().toISOString().split('T')[0],
 })
 
@@ -212,6 +231,12 @@ export default function ResumePage() {
     }
   }
 
+  function currencyFromFields(fields: Partial<ExtractedJobFields>): string {
+    if (fields.salary_currency) return fields.salary_currency
+    if (fields.salary_min != null || fields.salary_max != null) return 'EUR'
+    return ''
+  }
+
   async function openQuickAdd() {
     if (scrapedFields) {
       setQuickAddForm({
@@ -221,6 +246,7 @@ export default function ResumePage() {
         status: 'applied',
         salary_min: scrapedFields.salary_min?.toString() ?? '',
         salary_max: scrapedFields.salary_max?.toString() ?? '',
+        salary_currency: currencyFromFields(scrapedFields),
         notes: '',
         applied_at: new Date().toISOString().split('T')[0],
       })
@@ -242,6 +268,7 @@ export default function ResumePage() {
           status: 'applied',
           salary_min: fields.salary_min?.toString() ?? '',
           salary_max: fields.salary_max?.toString() ?? '',
+          salary_currency: currencyFromFields(fields),
           notes: '',
           applied_at: new Date().toISOString().split('T')[0],
         })
@@ -259,6 +286,7 @@ export default function ResumePage() {
     }
     setQuickAdding(true)
     try {
+      const hasSalary = Boolean(quickAddForm.salary_min || quickAddForm.salary_max)
       const res = await fetch('/api/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -269,6 +297,7 @@ export default function ResumePage() {
           status: quickAddForm.status,
           salary_min: quickAddForm.salary_min ? parseInt(quickAddForm.salary_min) : undefined,
           salary_max: quickAddForm.salary_max ? parseInt(quickAddForm.salary_max) : undefined,
+          salary_currency: hasSalary ? (quickAddForm.salary_currency || 'EUR') : undefined,
           notes: quickAddForm.notes || undefined,
           description: jobDescription.trim() || undefined,
           applied_at: quickAddForm.applied_at || undefined,
@@ -696,6 +725,22 @@ export default function ResumePage() {
                   />
                 </div>
                 <div>
+                  <label className={labelCls}>Currency</label>
+                  <select
+                    value={quickAddForm.salary_currency}
+                    onChange={(e) => setQuickAddForm((f) => ({ ...f, salary_currency: e.target.value }))}
+                    className={selectCls}
+                  >
+                    <option value="">—</option>
+                    {CURRENCY_OPTIONS.map((c) => (
+                      <option key={c.code} value={c.code}>{c.code}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
                   <label className={labelCls}>Status</label>
                   <select
                     value={quickAddForm.status}
@@ -708,9 +753,6 @@ export default function ResumePage() {
                     <option value="rejected">Rejected</option>
                   </select>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>Applied date</label>
                   <input

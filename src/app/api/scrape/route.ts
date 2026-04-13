@@ -6,6 +6,7 @@ interface JobExtract {
   role: string
   salary_min?: number
   salary_max?: number
+  salary_currency?: string
 }
 
 // Only extracts structured fields — the raw text is used as-is for description.
@@ -17,8 +18,9 @@ Respond with ONLY a valid JSON object — no markdown fences, no explanation:
 {
   "company": "company name or empty string if not found",
   "role": "job title",
-  "salary_min": null or integer (annual gross, in the currency mentioned — omit currency symbol),
-  "salary_max": null or integer
+  "salary_min": null or integer (annual gross, numbers only — omit currency symbol),
+  "salary_max": null or integer,
+  "salary_currency": "ISO 4217 code (e.g. USD, EUR, GBP) or null if no salary"
 }
 
 Job posting text:
@@ -52,6 +54,55 @@ async function tryAshby(url: string): Promise<(JobExtract & { description: strin
   }
 }
 
+// Greenhouse: https://job-boards.greenhouse.io/{board}/jobs/{jobId}
+//             https://boards.greenhouse.io/{board}/jobs/{jobId}
+// Uses the public boards REST API — no auth required.
+async function tryGreenhouse(url: string): Promise<(JobExtract & { description: string }) | null> {
+  const match = url.match(/greenhouse\.io\/([^/?#]+)\/jobs\/(\d+)/i)
+  if (!match) return null
+
+  const [, board, jobId] = match
+  const apiUrl = `https://boards-api.greenhouse.io/v1/boards/${board}/jobs/${jobId}`
+  const res = await fetch(apiUrl, { signal: AbortSignal.timeout(10_000) })
+  if (!res.ok) throw new Error(`Greenhouse API returned HTTP ${res.status}`)
+
+  const job = await res.json()
+
+  // content may contain HTML-entity-encoded tags (e.g. &lt;strong&gt;) in addition to real tags
+  const rawDesc: string = job.content ?? ''
+  const decoded = rawDesc
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+  const description = decoded.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+
+  // Salary values may appear as US$[134,000] (bracketed) or plain US$134,000/$134,000/€134,000/£134,000
+  // Capture the leading currency symbol so we can map it to an ISO code.
+  const salaryMatch = description.match(
+    /(US\$|\$|€|£|CHF\s*|CAD\s*|AUD\s*|NZD\s*)\s*\[?([\d,]+)\]?\s*(?:to|-|–)\s*(?:US\$|\$|€|£|CHF\s*|CAD\s*|AUD\s*|NZD\s*)?\s*\[?([\d,]+)\]?/i,
+  )
+  const CURRENCY_MAP: Record<string, string> = {
+    'US$': 'USD', '$': 'USD', '€': 'EUR', '£': 'GBP',
+    'CHF': 'CHF', 'CAD': 'CAD', 'AUD': 'AUD', 'NZD': 'NZD',
+  }
+  const salary_min = salaryMatch ? parseInt(salaryMatch[2].replace(/,/g, ''), 10) : undefined
+  const salary_max = salaryMatch ? parseInt(salaryMatch[3].replace(/,/g, ''), 10) : undefined
+  const salary_currency = salaryMatch
+    ? CURRENCY_MAP[salaryMatch[1].trim()] ?? undefined
+    : undefined
+
+  // API returns company_name as a top-level string field
+  const companyName: string = job.company_name ?? (board.charAt(0).toUpperCase() + board.slice(1))
+
+  return {
+    company: companyName,
+    role: job.title ?? '',
+    salary_min: salary_min && !isNaN(salary_min) ? salary_min : undefined,
+    salary_max: salary_max && !isNaN(salary_max) ? salary_max : undefined,
+    salary_currency,
+    description,
+  }
+}
+
 function extractTextFromHtml(html: string): string {
   return html
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
@@ -73,7 +124,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Try native APIs for known SPA job boards first
-    const native = await tryAshby(url)
+    const native = await tryAshby(url) ?? await tryGreenhouse(url)
     if (native) return NextResponse.json(native)
 
     // Generic HTML fetch

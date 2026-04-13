@@ -35,6 +35,7 @@ export interface Job {
   notes: string | null
   description: string | null
   gross_annual_salary: [number, number] | null
+  salary_currency: string | null
   base_resume_id: string | null
   resume_path: string | null
 }
@@ -56,6 +57,7 @@ export interface CreateJobInput {
   description?: string
   salary_min?: number
   salary_max?: number
+  salary_currency?: string
   base_resume_id?: string
 }
 
@@ -78,5 +80,6 @@ export interface ExtractedJobFields {
   role: string
   salary_min?: number
   salary_max?: number
+  salary_currency?: string
   description: string
 }

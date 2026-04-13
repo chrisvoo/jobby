@@ -114,7 +114,7 @@ export default function JobsPage() {
                   <td className="px-5 py-3 text-zinc-400">{job.role}</td>
                   <td className="px-5 py-3"><StatusBadge status={job.status} /></td>
                   <td className="px-5 py-3 text-zinc-500">{formatDate(job.applied_at)}</td>
-                  <td className="px-5 py-3 text-zinc-500 tabular-nums">{formatSalary(job.gross_annual_salary)}</td>
+                  <td className="px-5 py-3 text-zinc-500 tabular-nums">{formatSalary(job.gross_annual_salary, job.salary_currency)}</td>
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
                       {job.resume_path && (

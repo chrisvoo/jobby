@@ -6,14 +6,20 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatSalary(range: [number, number] | null): string {
+export function formatSalary(range: [number, number] | null, currency?: string | null): string {
   if (!range) return '—'
-  const fmt = (n: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(n)
+  const cur = currency || 'EUR'
+  const fmt = (n: number) => {
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: cur,
+        maximumFractionDigits: 0,
+      }).format(n)
+    } catch {
+      return n.toLocaleString('en-US')
+    }
+  }
   return `${fmt(range[0])} – ${fmt(range[1])}`
 }
 

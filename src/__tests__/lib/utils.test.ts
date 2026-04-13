@@ -6,11 +6,39 @@ describe('formatSalary', () => {
     expect(formatSalary(null)).toBe('—')
   })
 
-  it('formats a salary range in USD', () => {
+  it('defaults to EUR when no currency is provided', () => {
     const result = formatSalary([80000, 120000])
     expect(result).toMatch(/80,000/)
     expect(result).toMatch(/120,000/)
     expect(result).toContain('–')
+    expect(result).toContain('€')
+  })
+
+  it('formats a salary range in USD when currency is USD', () => {
+    const result = formatSalary([80000, 120000], 'USD')
+    expect(result).toMatch(/80,000/)
+    expect(result).toMatch(/120,000/)
+    expect(result).toContain('$')
+    expect(result).toContain('–')
+  })
+
+  it('formats a salary range in GBP when currency is GBP', () => {
+    const result = formatSalary([50000, 70000], 'GBP')
+    expect(result).toMatch(/50,000/)
+    expect(result).toMatch(/70,000/)
+    expect(result).toContain('£')
+  })
+
+  it('falls back gracefully for an unknown currency code', () => {
+    const result = formatSalary([50000, 70000], 'ZZZ')
+    expect(result).toMatch(/50,000/)
+    expect(result).toMatch(/70,000/)
+    expect(result).toContain('–')
+  })
+
+  it('defaults to EUR when null is passed as currency', () => {
+    const result = formatSalary([60000, 90000], null)
+    expect(result).toContain('€')
   })
 })
 

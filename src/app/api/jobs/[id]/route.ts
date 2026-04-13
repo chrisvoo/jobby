@@ -15,6 +15,7 @@ function rowToJob(row: Record<string, unknown>): Job {
     notes: row.notes ? String(row.notes) : null,
     description: row.description ? String(row.description) : null,
     gross_annual_salary: parseSalary(row.gross_annual_salary),
+    salary_currency: row.salary_currency ? String(row.salary_currency) : null,
     base_resume_id: row.base_resume_id ? String(row.base_resume_id) : null,
     resume_path: row.resume_path ? String(row.resume_path) : null,
   }
@@ -60,6 +61,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       setClauses.push(`gross_annual_salary = [${body.salary_min}, ${body.salary_max}]`)
     if (body.salary_min === null && body.salary_max === null)
       setClauses.push(`gross_annual_salary = NULL`)
+    if (body.salary_currency !== undefined)
+      setClauses.push(`salary_currency = ${body.salary_currency ? `'${body.salary_currency.replace(/'/g, "''")}'` : 'NULL'}`)
     if (body.base_resume_id !== undefined)
       setClauses.push(`base_resume_id = ${body.base_resume_id ? `'${body.base_resume_id}'` : 'NULL'}`)
     if (body.resume_path !== undefined)
