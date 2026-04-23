@@ -5,11 +5,8 @@ import { readConfig } from './app-config'
 
 // Survive Next.js hot-reload in development
 declare global {
-  // eslint-disable-next-line no-var
   var __duckdb_instance: DuckDBInstance | undefined
-  // eslint-disable-next-line no-var
   var __duckdb_conn: Awaited<ReturnType<DuckDBInstance['connect']>> | undefined
-  // eslint-disable-next-line no-var
   var __duckdb_path: string | undefined
 }
 

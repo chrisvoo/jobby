@@ -1,30 +1,45 @@
+import { readFileSync } from 'fs'
+import { join } from 'path'
+import nextPkg from 'next/package.json'
+import duckdbPkg from '@duckdb/node-api/package.json'
+import reactPdfPkg from '@react-pdf/renderer/package.json'
+
+const claudeVersion: string = JSON.parse(
+  readFileSync(join(process.cwd(), 'node_modules/@anthropic-ai/claude-agent-sdk/package.json'), 'utf8')
+).version
+
 const TECH_STACK = [
   {
     name: 'Next.js',
+    version: nextPkg.version,
     description: 'React framework serving the UI and all server-side logic — job CRUD, PDF extraction, AI calls, and PDF generation all live in API routes.',
     color: 'bg-white/5 border-white/10',
     logo: <NextjsLogo />,
   },
   {
     name: 'DuckDB',
+    version: duckdbPkg.version,
     description: 'Embedded SQL database storing all job applications and resume records in a single local file. No server, no cloud.',
     color: 'bg-yellow-500/5 border-yellow-500/15',
     logo: <DuckDBLogo />,
   },
   {
     name: 'Claude',
+    version: claudeVersion,
     description: 'Anthropic\'s Claude Agent SDK handles all AI calls — resume optimisation and job description parsing — using your existing claude.ai subscription. No API key required.',
     color: 'bg-amber-500/5 border-amber-500/15',
     logo: <ClaudeLogo />,
   },
   {
     name: '@react-pdf',
+    version: reactPdfPkg.version,
     description: 'Generates clean, ATS-optimised resume PDFs from Claude\'s structured output using React components.',
     color: 'bg-rose-500/5 border-rose-500/15',
     logo: <ReactPdfLogo />,
   },
   {
     name: 'Docker',
+    version: null,
     description: 'Single-container Compose stack — one command to run on any OS, no local dependencies beyond Docker.',
     color: 'bg-sky-500/5 border-sky-500/15',
     logo: <DockerLogo />,
@@ -46,11 +61,16 @@ export default function AboutPage() {
       <section>
         <h2 className="text-base font-semibold text-zinc-100 mb-4">Technology Stack</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {TECH_STACK.map(({ name, description, color, logo }) => (
+          {TECH_STACK.map(({ name, version, description, color, logo }) => (
             <div key={name} className={`border rounded-xl p-4 ${color}`}>
               <div className="flex items-center gap-3 mb-3">
                 {logo}
-                <span className="font-semibold text-zinc-100 text-sm">{name}</span>
+                <div>
+                  <span className="font-semibold text-zinc-100 text-sm">{name}</span>
+                  {version && (
+                    <span className="ml-2 text-xs text-zinc-500 font-mono">v{version}</span>
+                  )}
+                </div>
               </div>
               <p className="text-xs text-zinc-500 leading-relaxed">{description}</p>
             </div>

@@ -96,7 +96,8 @@ describe('POST /api/enhance/confirm — minimal template', () => {
   })
 
   it('uses DEFAULT_TEMPLATE_ID when template field is absent', async () => {
-    const { template: _t, ...bodyWithoutTemplate } = MINIMAL_BODY
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { template: _template, ...bodyWithoutTemplate } = MINIMAL_BODY
     const res = await POST(makeRequest(bodyWithoutTemplate))
     expect(res.status).toBe(200)
     expect(mockGenerateResumePDF).toHaveBeenCalledOnce()

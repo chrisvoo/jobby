@@ -173,7 +173,7 @@ export function ResumeEditor({ value, onChange }: Props) {
               </span>
             ))}
             <input
-              className="bg-transparent border border-dashed border-zinc-700 rounded-full px-3 py-1 text-xs text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 w-32"
+              className="bg-transparent border border-dashed border-zinc-700 rounded-full px-3 py-1 text-xs text-zinc-300 placeholder-zinc-600 focus:outline-hidden focus:border-indigo-500 w-32"
               placeholder="Add skill…"
               value={newSkill}
               onChange={(e) => setNewSkill(e.target.value)}
@@ -200,7 +200,7 @@ export function ResumeEditor({ value, onChange }: Props) {
               </span>
             ))}
             <input
-              className="bg-transparent border border-dashed border-zinc-700 rounded-full px-3 py-1 text-xs text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 w-44"
+              className="bg-transparent border border-dashed border-zinc-700 rounded-full px-3 py-1 text-xs text-zinc-300 placeholder-zinc-600 focus:outline-hidden focus:border-indigo-500 w-44"
               placeholder="Add certification…"
               value={newCert}
               onChange={(e) => setNewCert(e.target.value)}
@@ -221,4 +221,4 @@ export function ResumeEditor({ value, onChange }: Props) {
 const sectionLabel = 'text-xs font-semibold text-zinc-400 uppercase tracking-wide'
 
 const inputCls =
-  'bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-100 placeholder-zinc-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-colors w-full'
+  'bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-100 placeholder-zinc-500 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-colors w-full'

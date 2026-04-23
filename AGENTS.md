@@ -79,6 +79,15 @@ Dense facts for coding agents. Source: repo + prior Cursor transcripts.
 - **Types**: Shared resume shape in **`src/lib/types.ts`** vs **`ResumeData`** in pdf-generator — keep in sync when extending schema.
 - **Optional LLM swap** (transcript/wiki): replacing `claude.ts` with OpenAI-compatible HTTP client is the intended seam; **`/api/scrape`** and **`/api/enhance/prepare`** are the call sites.
 
+<!-- BEGIN:nextjs-agent-rules -->
+
+### Next.js: ALWAYS read docs before coding
+
+Before any Next.js work, find and read the relevant doc in `node_modules/next/dist/docs/`. Your training data is 
+outdated — the docs are the source of truth.
+
+<!-- END:nextjs-agent-rules -->
+
 ## AI task map (Claude)
 
 - **Job field extraction**: `src/app/api/scrape/route.ts` — `askClaudeJSON` on page text (Haiku model may be passed for cost).

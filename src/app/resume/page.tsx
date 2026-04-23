@@ -86,6 +86,7 @@ export default function ResumePage() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Restore form state from localStorage on mount
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem(LS_KEY) ?? '{}')
@@ -97,6 +98,7 @@ export default function ResumePage() {
     } catch {}
     setLsLoaded(true)
   }, [])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Persist form state to localStorage whenever it changes
   useEffect(() => {
@@ -147,7 +149,7 @@ export default function ResumePage() {
     if (!selectedJobId || !jobs.length) return
     const job = jobs.find((j) => j.id === selectedJobId)
     if (job?.description && !jobDescription.trim()) {
-      setJobDescription(job.description)
+      setJobDescription(job.description) // eslint-disable-line react-hooks/set-state-in-effect
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedJobId, jobs])
@@ -810,9 +812,9 @@ export default function ResumePage() {
 }
 
 const inputCls =
-  'bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-100 placeholder-zinc-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-colors w-full'
+  'bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-100 placeholder-zinc-500 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-colors w-full'
 
 const selectCls =
-  'bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-colors w-full'
+  'bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-100 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-colors w-full'
 
 const labelCls = 'block text-xs text-zinc-400 mb-1.5'

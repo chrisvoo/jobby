@@ -110,5 +110,7 @@ _open_when_ready() {
   fi
 }
 
-# Run in the background so the shell prompt returns immediately
+# Run in the background so the shell prompt returns immediately.
+# disown detaches the job so bash doesn't interrupt the prompt on completion.
 _open_when_ready &
+disown

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   Database,
-  Check, AlertTriangle, RotateCcw, Loader2, Bot, RefreshCw,
+  Check, RotateCcw, Loader2, Bot, RefreshCw,
   DollarSign, ChevronDown,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -112,7 +112,7 @@ function CurrencyCombobox({ value, onChange, currencies, loading, id }: Currency
           setOpen((o) => !o)
           if (!open) setTimeout(() => inputRef.current?.focus(), 50)
         }}
-        className="w-full flex items-center justify-between gap-2 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-left transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 hover:border-zinc-600"
+        className="w-full flex items-center justify-between gap-2 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-left transition-colors focus:outline-hidden focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 hover:border-zinc-600"
       >
         {loading ? (
           <span className="flex items-center gap-2 text-zinc-500">
@@ -134,7 +134,7 @@ function CurrencyCombobox({ value, onChange, currencies, loading, id }: Currency
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by code or name…"
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/50"
             />
           </div>
           <ul className="max-h-56 overflow-y-auto py-1">
@@ -187,6 +187,7 @@ export default function ConfigPage() {
 
   // ── Fetch currency list ────────────────────────────────────────
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrenciesLoading(true)
     fetch('/api/rates?currencies=true')
       .then((r) => r.json())
@@ -241,6 +242,7 @@ export default function ConfigPage() {
       })
       .catch(() => {})
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchModels(false)
   }, [fetchModels])
 

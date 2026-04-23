@@ -52,7 +52,6 @@ describe('GET /api/resumes', () => {
   it('returns an array of resumes', async () => {
     mockRunAndReadAll.mockResolvedValue({ getRowObjects: () => [RESUME_ROW] })
 
-    const req = new NextRequest('http://localhost/api/resumes')
     const res = await GET()
     expect(res.status).toBe(200)
 

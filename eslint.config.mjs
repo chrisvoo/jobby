@@ -1,0 +1,16 @@
+import nextConfig from 'eslint-config-next'
+import nextCoreWebVitals from 'eslint-config-next/core-web-vitals'
+import nextTypescript from 'eslint-config-next/typescript'
+
+const config = [
+  ...nextConfig,
+  ...nextCoreWebVitals,
+  ...nextTypescript,
+  {
+    settings: {
+      react: { version: '19' },
+    },
+  },
+]
+
+export default config
