@@ -113,13 +113,16 @@ describe('GET /api/jobs/[id]', () => {
 describe('PATCH /api/jobs/[id]', () => {
   it('returns 200 with the updated job', async () => {
     mockRun.mockResolvedValue(undefined)
-    mockRunAndReadAll.mockResolvedValue({ getRowObjects: () => [{ ...DB_ROW, status: 'interview' }] })
+    // First call: fetch current status before update; second call: fetch updated row
+    mockRunAndReadAll
+      .mockResolvedValueOnce({ getRowObjects: () => [{ status: 'applied' }] })
+      .mockResolvedValueOnce({ getRowObjects: () => [{ ...DB_ROW, status: 'hr_interview' }] })
 
-    const res = await PATCH(makeRequest('PATCH', { status: 'interview' }), PARAMS)
+    const res = await PATCH(makeRequest('PATCH', { status: 'hr_interview' }), PARAMS)
     expect(res.status).toBe(200)
 
     const body = await res.json()
-    expect(body.status).toBe('interview')
+    expect(body.status).toBe('hr_interview')
   })
 
   it('returns 400 when no updatable fields are provided', async () => {

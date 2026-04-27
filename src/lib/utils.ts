@@ -33,14 +33,16 @@ export function formatDate(iso: string): string {
 
 export const STATUS_LABELS: Record<JobStatus, string> = {
   applied: 'Applied',
-  interview: 'Interview',
+  hr_interview: 'HR Interview',
+  tech_interview: 'Tech Interview',
   offer: 'Offer',
   rejected: 'Rejected',
 }
 
 export const STATUS_COLORS: Record<JobStatus, string> = {
   applied: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
-  interview: 'bg-sky-500/15 text-sky-400 border-sky-500/25',
+  hr_interview: 'bg-sky-500/15 text-sky-400 border-sky-500/25',
+  tech_interview: 'bg-violet-500/15 text-violet-400 border-violet-500/25',
   offer: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
   rejected: 'bg-red-500/15 text-red-400 border-red-500/25',
 }

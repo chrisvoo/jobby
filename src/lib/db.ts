@@ -11,9 +11,8 @@ declare global {
 }
 
 async function initSchema(conn: Awaited<ReturnType<DuckDBInstance['connect']>>) {
-  await conn.run(`
-    CREATE TYPE IF NOT EXISTS job_status AS ENUM ('applied', 'interview', 'offer', 'rejected');
-  `)
+  // No longer using a DuckDB ENUM for job_status — status is plain VARCHAR.
+  // Any legacy `job_status` ENUM type created by older versions is left in place (unused).
 
   await conn.run(`
     CREATE TABLE IF NOT EXISTS resumes (
@@ -30,7 +29,7 @@ async function initSchema(conn: Awaited<ReturnType<DuckDBInstance['connect']>>) 
       company             VARCHAR NOT NULL,
       role                VARCHAR NOT NULL,
       url                 VARCHAR,
-      status              job_status DEFAULT 'applied',
+      status              VARCHAR DEFAULT 'applied',
       applied_at          TIMESTAMP DEFAULT now(),
       notes               TEXT,
       gross_annual_salary INTEGER[],
@@ -48,6 +47,25 @@ async function runMigrations(conn: Awaited<ReturnType<DuckDBInstance['connect']>
   if (_migrationsRan) return
   await conn.run(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS description TEXT`)
   await conn.run(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS salary_currency VARCHAR`)
+
+  // Convert the legacy job_status ENUM column to plain VARCHAR (idempotent — already VARCHAR is a no-op).
+  // This also allows the new hr_interview / tech_interview values without DuckDB ALTER TYPE limitations.
+  await conn.run(`ALTER TABLE jobs ALTER COLUMN status SET DATA TYPE VARCHAR`)
+
+  // Migrate legacy 'interview' rows → 'hr_interview' (idempotent)
+  await conn.run(`UPDATE jobs SET status = 'hr_interview' WHERE status = 'interview'`)
+
+  // Status history table — records every status transition per job
+  await conn.run(`
+    CREATE TABLE IF NOT EXISTS job_status_history (
+      id          VARCHAR PRIMARY KEY,
+      job_id      VARCHAR NOT NULL,
+      from_status VARCHAR,
+      to_status   VARCHAR NOT NULL,
+      changed_at  TIMESTAMP DEFAULT now()
+    )
+  `)
+
   // Flush all WAL entries into the main DB file so that a clean container restart
   // never has to replay ALTER TABLE statements (DuckDB has a WAL replay bug where
   // ALTER TABLE ADD COLUMN fails if the table has columns with DEFAULT expressions).

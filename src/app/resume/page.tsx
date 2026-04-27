@@ -750,7 +750,8 @@ export default function ResumePage() {
                     className={selectCls}
                   >
                     <option value="applied">Applied</option>
-                    <option value="interview">Interview</option>
+                    <option value="hr_interview">HR Interview</option>
+                    <option value="tech_interview">Tech Interview</option>
                     <option value="offer">Offer</option>
                     <option value="rejected">Rejected</option>
                   </select>

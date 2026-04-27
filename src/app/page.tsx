@@ -20,7 +20,7 @@ export default function DashboardPage() {
 
   const counts = {
     total: jobs.length,
-    interview: jobs.filter((j) => j.status === 'interview').length,
+    interview: jobs.filter((j) => j.status === 'hr_interview' || j.status === 'tech_interview').length,
     offer: jobs.filter((j) => j.status === 'offer').length,
     rejected: jobs.filter((j) => j.status === 'rejected').length,
   }

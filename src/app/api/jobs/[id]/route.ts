@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import fs from 'fs'
+import { randomUUID } from 'crypto'
 import { getDb, toISO, parseSalary } from '@/lib/db'
 import { resolveDataPath } from '@/lib/app-config'
 import type { Job, UpdateJobInput } from '@/lib/types'
@@ -49,8 +50,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       setClauses.push(`role = '${body.role.replace(/'/g, "''")}'`)
     if (body.url !== undefined)
       setClauses.push(`url = ${body.url ? `'${body.url.replace(/'/g, "''")}'` : 'NULL'}`)
-    if (body.status !== undefined)
-      setClauses.push(`status = '${body.status}'`)
+    // Normalize legacy 'interview' → 'hr_interview' so clients with stale data don't break
+    const incomingStatus = body.status !== undefined
+      ? ((body.status as string) === 'interview' ? 'hr_interview' : body.status)
+      : undefined
+
+    if (incomingStatus !== undefined)
+      setClauses.push(`status = '${incomingStatus}'`)
     if (body.applied_at !== undefined)
       setClauses.push(`applied_at = '${body.applied_at}'`)
     if (body.notes !== undefined)
@@ -71,7 +77,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!setClauses.length)
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
 
+    // Fetch current status before updating so we can record a history entry
+    let prevStatus: string | null = null
+    if (incomingStatus !== undefined) {
+      const prev = await conn.runAndReadAll(`SELECT CAST(status AS VARCHAR) AS status FROM jobs WHERE id = '${id}'`)
+      const prevRows = prev.getRowObjects()
+      prevStatus = prevRows.length ? String(prevRows[0].status) : null
+    }
+
     await conn.run(`UPDATE jobs SET ${setClauses.join(', ')} WHERE id = '${id}'`)
+
+    if (incomingStatus !== undefined && prevStatus !== incomingStatus) {
+      try {
+        const historyId = randomUUID()
+        const fromClause = prevStatus ? `'${prevStatus}'` : 'NULL'
+        await conn.run(`
+          INSERT INTO job_status_history (id, job_id, from_status, to_status)
+          VALUES ('${historyId}', '${id}', ${fromClause}, '${incomingStatus}')
+        `)
+      } catch (histErr) {
+        // Non-fatal: history recording failure should not block the update
+        console.warn('Failed to record status history:', histErr)
+      }
+    }
 
     const result = await conn.runAndReadAll(`SELECT * FROM jobs WHERE id = '${id}'`)
     const rows = result.getRowObjects()

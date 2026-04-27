@@ -4,8 +4,9 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import type { Job, JobStatus, Resume } from '@/lib/types'
+import { STATUS_LABELS } from '@/lib/utils'
 
-const STATUS_OPTIONS: JobStatus[] = ['applied', 'interview', 'offer', 'rejected']
+const STATUS_OPTIONS: JobStatus[] = ['applied', 'hr_interview', 'tech_interview', 'offer', 'rejected']
 
 const CURRENCY_OPTIONS = [
   { code: 'EUR', label: 'EUR — Euro' },
@@ -138,7 +139,7 @@ export function JobForm({ job, resumes, onSuccess }: Props) {
           >
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>
-                {s.charAt(0).toUpperCase() + s.slice(1)}
+                {STATUS_LABELS[s]}
               </option>
             ))}
           </select>

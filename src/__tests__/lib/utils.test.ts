@@ -53,7 +53,7 @@ describe('formatDate', () => {
 
 describe('STATUS_LABELS', () => {
   it('has labels for every status', () => {
-    const statuses = ['applied', 'interview', 'offer', 'rejected'] as const
+    const statuses = ['applied', 'hr_interview', 'tech_interview', 'offer', 'rejected'] as const
     for (const s of statuses) {
       expect(STATUS_LABELS[s]).toBeTruthy()
     }
@@ -62,7 +62,7 @@ describe('STATUS_LABELS', () => {
 
 describe('STATUS_COLORS', () => {
   it('has a CSS class for every status', () => {
-    const statuses = ['applied', 'interview', 'offer', 'rejected'] as const
+    const statuses = ['applied', 'hr_interview', 'tech_interview', 'offer', 'rejected'] as const
     for (const s of statuses) {
       expect(STATUS_COLORS[s]).toBeTruthy()
     }

@@ -65,9 +65,10 @@ Dense facts for coding agents. Source: repo + prior Cursor transcripts.
 
 ## Database schema (baseline)
 
-- **ENUM** `job_status`: `applied`, `interview`, `offer`, `rejected`.
+- **`job_status` type**: previously a DuckDB ENUM, now plain **`VARCHAR`** (DuckDB 1.5 doesn't support `ALTER TYPE ADD VALUE`). Migration converts the column via `ALTER TABLE jobs ALTER COLUMN status SET DATA TYPE VARCHAR` and updates legacy `'interview'` rows to `'hr_interview'`. Valid app-level values: `applied`, `hr_interview`, `tech_interview`, `offer`, `rejected`.
 - **`resumes`**: `id`, `name`, `file_path`, `uploaded_at`.
 - **`jobs`**: `id`, `company`, `role`, `url`, `status`, `applied_at`, `notes`, `gross_annual_salary INTEGER[2]`, `base_resume_id` FK → `resumes`, `resume_path`, + migrated **`description TEXT`**.
+- **`job_status_history`**: `id`, `job_id`, `from_status` (nullable — NULL on creation), `to_status`, `changed_at`. Populated on job INSERT and on status-changing PATCH.
 - **Helpers**: `toISO`, `parseSalary` for DuckDB ↔ app types.
 - **SQL in routes**: string-built queries with IDs — **escape single quotes** in paths (`replace(/'/g, "''")`) where interpolated.
 

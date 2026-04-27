@@ -1,4 +1,12 @@
-export type JobStatus = 'applied' | 'interview' | 'offer' | 'rejected'
+export type JobStatus = 'applied' | 'hr_interview' | 'tech_interview' | 'offer' | 'rejected'
+
+export interface JobStatusHistory {
+  id: string
+  job_id: string
+  from_status: JobStatus | null
+  to_status: JobStatus
+  changed_at: string
+}
 
 export interface ResumeData {
   name: string

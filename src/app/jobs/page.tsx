@@ -5,11 +5,11 @@ import Link from 'next/link'
 import { Plus, Pencil, Trash2, Download, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 import { StatusBadge } from '@/components/status-badge'
-import { formatDate, formatSalary } from '@/lib/utils'
+import { formatDate, formatSalary, STATUS_LABELS } from '@/lib/utils'
 import type { Job, JobStatus } from '@/lib/types'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 
-const ALL_STATUSES: ('all' | JobStatus)[] = ['all', 'applied', 'interview', 'offer', 'rejected']
+const ALL_STATUSES: ('all' | JobStatus)[] = ['all', 'applied', 'hr_interview', 'tech_interview', 'offer', 'rejected']
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([])
@@ -67,7 +67,7 @@ export default function JobsPage() {
                 : 'text-zinc-400 hover:text-zinc-100'
             }`}
           >
-            {s.charAt(0).toUpperCase() + s.slice(1)}
+            {s === 'all' ? 'All' : STATUS_LABELS[s]}
             <span className="ml-1.5 text-xs opacity-60">
               {s === 'all' ? jobs.length : jobs.filter((j) => j.status === s).length}
             </span>

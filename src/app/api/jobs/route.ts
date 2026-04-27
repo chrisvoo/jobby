@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { getDb, toISO, parseSalary } from '@/lib/db'
-import type { Job, CreateJobInput } from '@/lib/types'
+import type { Job, JobStatus, CreateJobInput } from '@/lib/types'
 
 function rowToJob(row: Record<string, unknown>): Job {
   return {
@@ -62,6 +62,13 @@ export async function POST(req: NextRequest) {
         ${body.salary_currency ? `'${body.salary_currency.replace(/'/g, "''")}'` : 'NULL'},
         ${body.base_resume_id ? `'${body.base_resume_id}'` : 'NULL'}
       )
+    `)
+
+    const initialStatus: JobStatus = (body.status ?? 'applied') as JobStatus
+    const historyId = randomUUID()
+    await conn.run(`
+      INSERT INTO job_status_history (id, job_id, from_status, to_status)
+      VALUES ('${historyId}', '${id}', NULL, '${initialStatus}')
     `)
 
     const result = await conn.runAndReadAll(`SELECT * FROM jobs WHERE id = '${id}'`)
