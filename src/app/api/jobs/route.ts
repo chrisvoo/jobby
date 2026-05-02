@@ -20,14 +20,39 @@ function rowToJob(row: Record<string, unknown>): Job {
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const conn = await getDb()
+    const url = new URL(req.url)
+
+    const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1)
+    const pageSize = Math.max(1, Math.min(100, parseInt(url.searchParams.get('pageSize') ?? '10', 10) || 10))
+    const statusFilter = url.searchParams.get('status') as JobStatus | null
+    const offset = (page - 1) * pageSize
+
+    const where = statusFilter ? `WHERE status = '${statusFilter.replace(/'/g, "''")}'` : ''
+
+    const countResult = await conn.runAndReadAll(`SELECT COUNT(*) AS cnt FROM jobs ${where}`)
+    const total = Number((countResult.getRowObjects()[0] as Record<string, unknown>).cnt)
+
     const result = await conn.runAndReadAll(
-      `SELECT * FROM jobs ORDER BY applied_at DESC`,
+      `SELECT * FROM jobs ${where} ORDER BY applied_at DESC LIMIT ${pageSize} OFFSET ${offset}`,
     )
     const jobs = result.getRowObjects().map(rowToJob)
-    return NextResponse.json(jobs)
+
+    const countsResult = await conn.runAndReadAll(
+      `SELECT CAST(status AS VARCHAR) AS status, COUNT(*) AS cnt FROM jobs GROUP BY status`,
+    )
+    const statusCounts: Record<string, number> = {}
+    let totalAll = 0
+    for (const row of countsResult.getRowObjects() as Array<{ status: string; cnt: unknown }>) {
+      const c = Number(row.cnt)
+      statusCounts[row.status] = c
+      totalAll += c
+    }
+    statusCounts.all = totalAll
+
+    return NextResponse.json({ jobs, total, page, pageSize, statusCounts })
   } catch (err) {
     console.error(err)
     return NextResponse.json({ error: 'Failed to fetch jobs' }, { status: 500 })
