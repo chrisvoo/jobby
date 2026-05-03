@@ -1,14 +1,15 @@
 import fs from 'fs'
 import path from 'path'
-import { DEFAULT_CLAUDE_MODEL } from './claude-models'
+import { DEFAULT_LLM_MODEL } from './llm-models'
 
 // Stored at project root — never committed (see .gitignore)
 export const CONFIG_FILE = path.join(process.cwd(), 'jobby.config.json')
 
 export interface AppConfig {
   duckdb_path: string
-  claude_model: string
+  llm_model: string
   target_currency: string
+  groq_api_key: string
 }
 
 export function defaultDuckDbPath(): string {
@@ -20,7 +21,7 @@ export function readConfig(): AppConfig {
   try {
     if (fs.existsSync(CONFIG_FILE)) {
       const raw = fs.readFileSync(CONFIG_FILE, 'utf-8')
-      const parsed = JSON.parse(raw) as Partial<AppConfig>
+      const parsed = JSON.parse(raw) as Partial<AppConfig> & { claude_model?: string }
       let dbPath = parsed.duckdb_path ?? fallback
       const cwd = process.cwd()
       if (dbPath !== fallback && !dbPath.startsWith(cwd + path.sep)) {
@@ -28,12 +29,13 @@ export function readConfig(): AppConfig {
       }
       return {
         duckdb_path: dbPath,
-        claude_model: parsed.claude_model ?? DEFAULT_CLAUDE_MODEL,
+        llm_model: parsed.llm_model ?? DEFAULT_LLM_MODEL,
         target_currency: parsed.target_currency ?? 'EUR',
+        groq_api_key: parsed.groq_api_key ?? '',
       }
     }
   } catch {}
-  return { duckdb_path: fallback, claude_model: DEFAULT_CLAUDE_MODEL, target_currency: 'EUR' }
+  return { duckdb_path: fallback, llm_model: DEFAULT_LLM_MODEL, target_currency: 'EUR', groq_api_key: '' }
 }
 
 export function writeConfig(config: AppConfig): void {
@@ -45,10 +47,9 @@ export function getDataDir(): string {
 }
 
 /**
- * Resolves a file path that may have been stored with a different base directory
- * (e.g. a host-absolute path now running inside a Docker container).
- * If the path doesn't start under process.cwd(), extracts the relative portion
- * after "data/" and rebuilds it under the current data directory.
+ * Resolves a file path that may have been stored with a different base directory.
+ * Handles legacy paths stored when the app ran inside Docker (host-absolute paths
+ * that no longer match the current cwd). Kept for backward compatibility.
  */
 export function resolveDataPath(storedPath: string): string {
   const cwd = process.cwd()

@@ -77,6 +77,7 @@ export interface EnhanceResult {
   filename: string
   warnings: string[]
   changes: Array<{
+    section: string
     original_text: string
     replacement_text: string
     reason: string

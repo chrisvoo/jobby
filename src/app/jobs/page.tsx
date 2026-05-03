@@ -182,7 +182,7 @@ export default function JobsPage() {
           </div>
 
           {/* Pagination footer */}
-          <div className="px-5 py-3 border-t border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-500">
+          <div className="px-5 py-3 border-t border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-400">
             <span>
               Showing {showingFrom}–{showingTo} of {total}
             </span>

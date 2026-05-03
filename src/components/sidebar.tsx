@@ -65,7 +65,7 @@ export function Sidebar() {
         </div>
         <NavLinks pathname={pathname} />
         <div className="px-6 py-4 border-t border-zinc-800">
-          <p className="text-xs text-zinc-600">Jobby v0.1.0</p>
+          <p className="text-xs text-zinc-400">Jobby v0.1.0</p>
         </div>
       </aside>
 
@@ -101,7 +101,7 @@ export function Sidebar() {
             </div>
             <NavLinks pathname={pathname} onNavigate={() => setMobileOpen(false)} />
             <div className="px-6 py-4 border-t border-zinc-800">
-              <p className="text-xs text-zinc-600">Jobby v0.1.0</p>
+              <p className="text-xs text-zinc-400">Jobby v0.1.0</p>
             </div>
           </div>
         </>

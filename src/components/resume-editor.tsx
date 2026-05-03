@@ -114,7 +114,7 @@ export function ResumeEditor({ value, onChange }: Props) {
                 <input className={inputCls} value={exp.location ?? ''} onChange={(e) => updateExp(ei, { location: e.target.value })} placeholder="Location (optional)" />
               )}
               <div className="space-y-2">
-                <p className="text-xs text-zinc-500 font-medium">Bullets</p>
+                <p className="text-xs text-zinc-400 font-medium">Bullets</p>
                 {exp.bullets.map((b, bi) => (
                   <div key={bi} className="flex gap-2 items-start">
                     <textarea

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import fs from 'fs'
 import { getDb } from '@/lib/db'
 import { extractPdfText } from '@/lib/pdf-extractor'
-import { askClaudeJSON } from '@/lib/claude'
+import { askLLMJSON } from '@/lib/llm'
 import { resolveDataPath } from '@/lib/app-config'
 import type { ResumeData } from '@/lib/types'
 
@@ -10,11 +10,14 @@ const MINIMAL_PROMPT = `You are an expert resume writer optimising resumes for b
 
 Given an original resume and a job description, produce an improved version of the candidate's resume that:
 - Retains ONLY information actually present in the original resume — do not invent experience, skills, or credentials
+- IMPORTANT: Include EVERY work experience entry from the original resume in the "experience" array — never omit, merge, or skip any position, regardless of relevance to the target role
 - Incorporates relevant keywords and phrases from the job posting naturally
 - Uses consistent date formatting throughout (e.g. always "Jan 2020 – Mar 2024")
 - Stays ATS-safe: standard fonts, no photos/logos/charts/icons/stars/arrows/checkmarks
 - Rewrites bullet points to be achievement-oriented: "Achieved X by doing Y, resulting in Z"
 - Keeps language professional, concise, and scannable
+
+For the "changes" array, document EVERY meaningful text change you make — be exhaustive, not selective. Include changes to the summary, each individual bullet point, skill list, certifications, and any other section. A complete resume enhancement should typically produce 10–30 change entries.
 
 Generate the output filename using the format: FirstName_LastName_JobTitle_Resume.pdf
 
@@ -24,6 +27,7 @@ Respond with ONLY a valid JSON object — no markdown fences, no explanation:
   "warnings": ["list any ATS issues found in the original, e.g. presence of a photo, fancy symbols, non-standard fonts"],
   "changes": [
     {
+      "section": "human-readable label identifying where this change is (e.g. 'Summary', 'Experience — Acme Corp', 'Skills', 'Education — MIT', 'Certifications')",
       "original_text": "exact phrase from the original resume that was changed",
       "replacement_text": "the improved version of that phrase",
       "reason": "brief explanation of why this change improves ATS or readability"
@@ -62,32 +66,22 @@ Respond with ONLY a valid JSON object — no markdown fences, no explanation:
 interface MinimalResponse {
   output_filename: string
   warnings: string[]
-  changes: Array<{ original_text: string; replacement_text: string; reason: string }>
+  changes: Array<{ section: string; original_text: string; replacement_text: string; reason: string }>
   resume: ResumeData
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { job_id, job_description, candidate_name } = await req.json()
+    const { resume_id, job_description, candidate_name } = await req.json()
 
-    if (!job_id || !job_description) {
-      return NextResponse.json({ error: 'job_id and job_description required' }, { status: 400 })
+    if (!resume_id || !job_description) {
+      return NextResponse.json({ error: 'resume_id and job_description required' }, { status: 400 })
     }
 
     const conn = await getDb()
 
-    const jobResult = await conn.runAndReadAll(`SELECT * FROM jobs WHERE id = '${job_id}'`)
-    const jobs = jobResult.getRowObjects()
-    if (!jobs.length) return NextResponse.json({ error: 'Job not found' }, { status: 404 })
-
-    const job = jobs[0] as Record<string, unknown>
-    const baseResumeId = job.base_resume_id ? String(job.base_resume_id) : null
-    if (!baseResumeId) {
-      return NextResponse.json({ error: 'No base resume linked to this job' }, { status: 400 })
-    }
-
     const resumeResult = await conn.runAndReadAll(
-      `SELECT file_path FROM resumes WHERE id = '${baseResumeId}'`,
+      `SELECT file_path FROM resumes WHERE id = '${resume_id}'`,
     )
     const resumes = resumeResult.getRowObjects()
     if (!resumes.length) return NextResponse.json({ error: 'Resume not found' }, { status: 404 })
@@ -112,7 +106,7 @@ ${job_description}
 ---
 Candidate name hint (for filename): ${candidate_name ?? 'extract from resume'}`
 
-    const result = await askClaudeJSON<MinimalResponse>(prompt)
+    const result = await askLLMJSON<MinimalResponse>(prompt)
     return NextResponse.json({
       template: 'minimal',
       output_filename: result.output_filename,

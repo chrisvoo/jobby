@@ -4,19 +4,22 @@ import path from 'path'
 import { readConfig, writeConfig } from '@/lib/app-config'
 
 export async function GET() {
-  return NextResponse.json(readConfig())
+  const config = readConfig()
+  return NextResponse.json(config)
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
   const {
     duckdb_path,
-    claude_model,
+    llm_model,
     target_currency,
+    groq_api_key,
   } = body as {
     duckdb_path?: string
-    claude_model?: string
+    llm_model?: string
     target_currency?: string
+    groq_api_key?: string
   }
 
   const current = readConfig()
@@ -47,8 +50,9 @@ export async function POST(req: NextRequest) {
 
   writeConfig({
     duckdb_path: duckdb_path ?? current.duckdb_path,
-    claude_model: claude_model ?? current.claude_model,
+    llm_model: llm_model ?? current.llm_model,
     target_currency: target_currency ?? current.target_currency,
+    groq_api_key: groq_api_key !== undefined ? groq_api_key : current.groq_api_key,
   })
 
   return NextResponse.json({

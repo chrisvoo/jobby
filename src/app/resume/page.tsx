@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Upload, FileText, Trash2, Sparkles, Download,
-  AlertTriangle, CheckCircle2, Loader2, Link2, BookmarkPlus, X, Eraser, FileCheck2, ChevronDown,
+  AlertTriangle, CheckCircle2, Loader2, Link2, BookmarkPlus, X, Eraser, FileCheck2, ChevronDown, ArrowUp,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
@@ -11,13 +11,13 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ResumeEditor } from '@/components/resume-editor'
 import { RESUME_TEMPLATES, DEFAULT_TEMPLATE_ID } from '@/lib/resume-templates'
 import type { TemplateId } from '@/lib/resume-templates'
-import type { Job, JobStatus, Resume, ExtractedJobFields, ResumeData } from '@/lib/types'
+import type { JobStatus, Resume, ExtractedJobFields, ResumeData } from '@/lib/types'
 
 interface PrepareResult {
   template: 'minimal'
   output_filename: string
   warnings: string[]
-  changes: Array<{ original_text: string; replacement_text: string; reason: string }>
+  changes: Array<{ section: string; original_text: string; replacement_text: string; reason: string }>
   resume: ResumeData
 }
 
@@ -61,10 +61,8 @@ const defaultQuickAdd = (): QuickAddForm => ({
 
 export default function ResumePage() {
   const [resumes, setResumes] = useState<Resume[]>([])
-  const [jobs, setJobs] = useState<Job[]>([])
   const [uploading, setUploading] = useState(false)
   const [selectedResumeId, setSelectedResumeId] = useState('')
-  const [selectedJobId, setSelectedJobId] = useState('')
   const [jobUrl, setJobUrl] = useState('')
   const [jobDescription, setJobDescription] = useState('')
   const [scrapedFields, setScrapedFields] = useState<Partial<ExtractedJobFields> | null>(null)
@@ -83,6 +81,14 @@ export default function ResumePage() {
   const [extracting, setExtracting] = useState(false)
   const [confirmDeleteResumeId, setConfirmDeleteResumeId] = useState<string | null>(null)
 
+  const [showScrollTop, setShowScrollTop] = useState(false)
+
+  useEffect(() => {
+    function onScroll() { setShowScrollTop(window.scrollY > 300) }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Restore form state from localStorage on mount
@@ -91,7 +97,6 @@ export default function ResumePage() {
     try {
       const stored = JSON.parse(localStorage.getItem(LS_KEY) ?? '{}')
       if (stored.selectedResumeId) setSelectedResumeId(stored.selectedResumeId)
-      if (stored.selectedJobId) setSelectedJobId(stored.selectedJobId)
       if (stored.jobUrl) setJobUrl(stored.jobUrl)
       if (stored.jobDescription) setJobDescription(stored.jobDescription)
       if (stored.scrapedFields) setScrapedFields(stored.scrapedFields)
@@ -105,22 +110,17 @@ export default function ResumePage() {
     if (!lsLoaded) return
     try {
       localStorage.setItem(LS_KEY, JSON.stringify({
-        selectedResumeId, selectedJobId, jobUrl, jobDescription, scrapedFields,
+        selectedResumeId, jobUrl, jobDescription, scrapedFields,
       }))
     } catch {}
-  }, [lsLoaded, selectedResumeId, selectedJobId, jobUrl, jobDescription, scrapedFields])
+  }, [lsLoaded, selectedResumeId, jobUrl, jobDescription, scrapedFields])
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/resumes').then((r) => r.json()),
-      fetch('/api/jobs').then((r) => r.json()),
-    ])
-      .then(([r, j]) => {
+    fetch('/api/resumes')
+      .then((r) => r.json())
+      .then((r) => {
         const resumes = Array.isArray(r) ? r as Resume[] : []
-        const jobs = Array.isArray(j) ? j as Job[] : []
         setResumes(resumes)
-        setJobs(jobs)
-
         setSelectedResumeId((prev) => {
           if (prev && !resumes.find((x) => x.id === prev)) {
             try {
@@ -131,32 +131,12 @@ export default function ResumePage() {
           }
           return prev
         })
-        setSelectedJobId((prev) => {
-          if (prev && !jobs.find((x) => x.id === prev)) {
-            try {
-              const stored = JSON.parse(localStorage.getItem(LS_KEY) ?? '{}')
-              localStorage.setItem(LS_KEY, JSON.stringify({ ...stored, selectedJobId: '' }))
-            } catch {}
-            return ''
-          }
-          return prev
-        })
       })
       .catch(() => {})
   }, [])
 
-  useEffect(() => {
-    if (!selectedJobId || !jobs.length) return
-    const job = jobs.find((j) => j.id === selectedJobId)
-    if (job?.description && !jobDescription.trim()) {
-      setJobDescription(job.description) // eslint-disable-line react-hooks/set-state-in-effect
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedJobId, jobs])
-
   function clearForm() {
     setSelectedResumeId('')
-    setSelectedJobId('')
     setJobUrl('')
     setJobDescription('')
     setScrapedFields(null)
@@ -217,14 +197,6 @@ export default function ResumePage() {
       const fields: ExtractedJobFields = await res.json()
       setJobDescription(fields.description ?? '')
       setScrapedFields(fields)
-
-      const match = jobs.find(
-        (j) =>
-          j.company?.toLowerCase() === fields.company?.toLowerCase() ||
-          j.url === jobUrl,
-      )
-      if (match) setSelectedJobId(match.id)
-
       toast.success('Job description extracted')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Scrape failed')
@@ -307,9 +279,6 @@ export default function ResumePage() {
         }),
       })
       if (!res.ok) { const e = await res.json().catch(() => null); throw new Error(e?.error ?? `Server error ${res.status}`) }
-      const newJob: Job = await res.json()
-      setJobs((prev) => [newJob, ...prev])
-      setSelectedJobId(newJob.id)
       setQuickAddOpen(false)
       toast.success('Job application added')
     } catch (err) {
@@ -321,18 +290,7 @@ export default function ResumePage() {
 
   async function enhance() {
     if (!selectedResumeId) { toast.error('Select a base resume first'); return }
-    if (!selectedJobId) { toast.error('Select a job to target'); return }
     if (!jobDescription.trim()) { toast.error('Provide a job description'); return }
-
-    const patchRes = await fetch(`/api/jobs/${selectedJobId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        base_resume_id: selectedResumeId,
-        description: jobDescription.trim() || undefined,
-      }),
-    })
-    if (!patchRes.ok) { toast.error('Failed to link resume to job'); return }
 
     setEnhancing(true)
     setPreview(null)
@@ -343,7 +301,7 @@ export default function ResumePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          job_id: selectedJobId,
+          resume_id: selectedResumeId,
           job_description: jobDescription,
           template: selectedTemplate,
         }),
@@ -369,7 +327,6 @@ export default function ResumePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          job_id: selectedJobId,
           resume: draftResume,
           output_filename: preview.output_filename,
           template: selectedTemplate,
@@ -393,7 +350,6 @@ export default function ResumePage() {
 
   const missingForEnhance = [
     !selectedResumeId && 'select a base resume',
-    !selectedJobId && 'select a target job',
     !jobDescription.trim() && 'add a job description',
   ].filter(Boolean) as string[]
 
@@ -402,7 +358,7 @@ export default function ResumePage() {
       <div>
         <h1 className="text-2xl font-semibold text-zinc-100">Resume Enhancer</h1>
         <p className="text-zinc-500 text-sm mt-1">
-          Tailor your resume to a specific job posting using Claude AI
+          Tailor your resume to a specific job posting using AI
         </p>
       </div>
 
@@ -447,7 +403,7 @@ export default function ResumePage() {
                     <FileText className="w-4 h-4 text-zinc-400 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-zinc-100 truncate">{r.name}</p>
-                      <p className="text-xs text-zinc-500">{formatDate(r.uploaded_at)}</p>
+                      <p className="text-xs text-zinc-400">{formatDate(r.uploaded_at)}</p>
                     </div>
                     <button
                       onClick={(e) => { e.stopPropagation(); setConfirmDeleteResumeId(r.id) }}
@@ -458,28 +414,6 @@ export default function ResumePage() {
                   </div>
                 ))}
               </div>
-            )}
-          </div>
-
-          {/* Target job selector */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-            <h2 className="text-sm font-semibold text-zinc-100 mb-3">Target Job</h2>
-            <select
-              value={selectedJobId}
-              onChange={(e) => setSelectedJobId(e.target.value)}
-              className={selectCls}
-            >
-              <option value="">— Select a job —</option>
-              {jobs.map((j) => (
-                <option key={j.id} value={j.id}>
-                  {j.company} · {j.role}
-                </option>
-              ))}
-            </select>
-            {jobs.length === 0 && (
-              <p className="text-xs text-zinc-600 mt-2">
-                Add jobs in the Jobs tab first.
-              </p>
             )}
           </div>
 
@@ -504,7 +438,7 @@ export default function ResumePage() {
                     }`} />
                     <span className="text-sm font-medium text-zinc-100">{tpl.name}</span>
                   </div>
-                  <p className="text-xs text-zinc-500 leading-relaxed pl-4">{tpl.description}</p>
+                  <p className="text-xs text-zinc-400 leading-relaxed pl-4">{tpl.description}</p>
                 </button>
               ))}
             </div>
@@ -572,14 +506,14 @@ export default function ResumePage() {
               className="flex-1 inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-medium text-sm transition-colors"
             >
               {enhancing ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Enhancing with Claude…</>
+                <><Loader2 className="w-4 h-4 animate-spin" /> Enhancing with AI…</>
               ) : (
                 <><Sparkles className="w-4 h-4" /> Enhance Resume</>
               )}
             </button>
           </div>
           {!enhancing && missingForEnhance.length > 0 && (
-            <p className="text-xs text-zinc-500 text-center -mt-1">
+            <p className="text-xs text-zinc-400 text-center -mt-1">
               Still needed: {missingForEnhance.join(', ')}
             </p>
           )}
@@ -633,7 +567,7 @@ export default function ResumePage() {
             <details className="group bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
               <summary className="flex items-center justify-between px-5 py-3 cursor-pointer list-none hover:bg-zinc-800/40 transition-colors">
                 <span className="text-sm font-semibold text-zinc-100">
-                  Claude&apos;s notes ({preview.changes.length} changes)
+                  Enhancement notes ({preview.changes.length} changes)
                 </span>
                 <ChevronDown className="w-4 h-4 text-zinc-500 group-open:rotate-180 transition-transform" />
               </summary>
@@ -642,7 +576,12 @@ export default function ResumePage() {
                   <div key={i} className="px-5 py-4">
                     <div className="flex items-start gap-2 mb-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-                      <p className="text-xs text-zinc-500">{c.reason}</p>
+                      <div className="flex flex-col gap-0.5">
+                        {c.section && (
+                          <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">{c.section}</span>
+                        )}
+                        <p className="text-xs text-zinc-400">{c.reason}</p>
+                      </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
                       <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
@@ -659,6 +598,29 @@ export default function ResumePage() {
               </div>
             </details>
           )}
+
+          <div className="flex items-center justify-end gap-3 pt-2">
+            {finalResult && (
+              <a
+                href={finalResult.download_url}
+                download={finalResult.filename}
+                className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Download {finalResult.filename}
+              </a>
+            )}
+            <button
+              onClick={confirmGenerate}
+              disabled={confirming}
+              className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+            >
+              {confirming
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</>
+                : <><FileCheck2 className="w-4 h-4" /> {finalResult ? 'Regenerate PDF' : 'Generate PDF'}</>
+              }
+            </button>
+          </div>
         </div>
       )}
 
@@ -808,6 +770,16 @@ export default function ResumePage() {
         }}
         onCancel={() => setConfirmDeleteResumeId(null)}
       />
+
+      <button
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        aria-label="Scroll to top"
+        className={`fixed bottom-8 right-8 z-50 p-3 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/40 transition-all duration-300 ${
+          showScrollTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+        }`}
+      >
+        <ArrowUp className="w-4 h-4" />
+      </button>
     </div>
   )
 }

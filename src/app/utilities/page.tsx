@@ -199,7 +199,7 @@ export default function UtilitiesPage() {
           <ArrowRightLeft className="w-4 h-4 text-emerald-400" />
           <div>
             <h2 className="text-sm font-semibold text-zinc-100">Currency Converter</h2>
-            <p className="text-xs text-zinc-500 mt-0.5">
+            <p className="text-xs text-zinc-400 mt-0.5">
               Live rates from{' '}
               <a
                 href="https://www.frankfurter.dev"
@@ -291,7 +291,7 @@ export default function UtilitiesPage() {
                 </span>
                 <span className="text-lg font-semibold text-zinc-400">{convResult.to}</span>
               </div>
-              <div className="flex flex-wrap gap-4 text-xs text-zinc-500">
+              <div className="flex flex-wrap gap-4 text-xs text-zinc-400">
                 <span>
                   <span className="font-mono text-zinc-400">1 {convResult.from}</span>
                   {' = '}
@@ -299,7 +299,7 @@ export default function UtilitiesPage() {
                 </span>
                 <span>Rate date: {convResult.date}</span>
               </div>
-              <p className="text-xs text-zinc-600">
+              <p className="text-xs text-zinc-400">
                 {convResult.amount.toLocaleString()} {convResult.from} at the above rate
               </p>
             </div>
@@ -307,7 +307,7 @@ export default function UtilitiesPage() {
 
           {/* Default currency note */}
           {defaultTargetCurrency && !toCurrency && (
-            <p className="text-xs text-zinc-600">
+            <p className="text-xs text-zinc-400">
               Default target currency is <span className="text-zinc-400 font-mono">{defaultTargetCurrency}</span> (set in{' '}
               <Link href="/config" className="text-zinc-500 hover:text-zinc-300 underline">Settings</Link>).
             </p>

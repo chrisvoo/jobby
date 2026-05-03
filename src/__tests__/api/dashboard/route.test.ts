@@ -17,7 +17,7 @@ vi.mock('@/lib/db', () => ({
 }))
 
 vi.mock('@/lib/app-config', () => ({
-  readConfig: vi.fn(() => ({ duckdb_path: '', claude_model: '', target_currency: 'EUR' })),
+  readConfig: vi.fn(() => ({ duckdb_path: '', llm_model: '', target_currency: 'EUR', groq_api_key: '' })),
 }))
 
 import { GET } from '@/app/api/dashboard/route'

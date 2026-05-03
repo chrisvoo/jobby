@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { askClaudeJSON } from '@/lib/claude'
+import { askLLMJSON } from '@/lib/llm'
 
 interface JobExtract {
   company: string
@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
 
     // Text-only path: extract structured fields; the pasted text IS the description
     if (!url) {
-      const fields = await askClaudeJSON<JobExtract>(EXTRACT_PROMPT(text))
+      const fields = await askLLMJSON<JobExtract>(EXTRACT_PROMPT(text))
       return NextResponse.json({ ...fields, description: text as string })
     }
 
@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const fields = await askClaudeJSON<JobExtract>(EXTRACT_PROMPT(pageText))
+    const fields = await askLLMJSON<JobExtract>(EXTRACT_PROMPT(pageText))
     return NextResponse.json({ ...fields, description: pageText })
   } catch (err) {
     console.error(err)

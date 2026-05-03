@@ -12,7 +12,7 @@ import {
   resolveDataPath,
   CONFIG_FILE,
 } from '@/lib/app-config'
-import { DEFAULT_CLAUDE_MODEL } from '@/lib/claude-models'
+import { DEFAULT_LLM_MODEL } from '@/lib/llm-models'
 
 const CWD = process.cwd()
 const DEFAULT_DB = path.join(CWD, 'data', 'app.db')
@@ -38,8 +38,9 @@ describe('readConfig', () => {
 
     const cfg = readConfig()
     expect(cfg.duckdb_path).toBe(DEFAULT_DB)
-    expect(cfg.claude_model).toBe(DEFAULT_CLAUDE_MODEL)
+    expect(cfg.llm_model).toBe(DEFAULT_LLM_MODEL)
     expect(cfg.target_currency).toBe('EUR')
+    expect(cfg.groq_api_key).toBe('')
   })
 
   it('returns parsed config when file exists and is valid', () => {
@@ -47,15 +48,17 @@ describe('readConfig', () => {
     vi.mocked(fs.readFileSync).mockReturnValue(
       JSON.stringify({
         duckdb_path: path.join(CWD, 'data', 'custom.db'),
-        claude_model: 'claude-opus-4-6',
+        llm_model: 'qwen-qwq-32b',
         target_currency: 'USD',
+        groq_api_key: 'gsk_test',
       }),
     )
 
     const cfg = readConfig()
     expect(cfg.duckdb_path).toBe(path.join(CWD, 'data', 'custom.db'))
-    expect(cfg.claude_model).toBe('claude-opus-4-6')
+    expect(cfg.llm_model).toBe('qwen-qwq-32b')
     expect(cfg.target_currency).toBe('USD')
+    expect(cfg.groq_api_key).toBe('gsk_test')
   })
 
   it('falls back to default db path when stored duckdb_path is outside cwd', () => {
@@ -63,8 +66,9 @@ describe('readConfig', () => {
     vi.mocked(fs.readFileSync).mockReturnValue(
       JSON.stringify({
         duckdb_path: '/some/other/absolute/path/app.db',
-        claude_model: DEFAULT_CLAUDE_MODEL,
+        llm_model: DEFAULT_LLM_MODEL,
         target_currency: 'EUR',
+        groq_api_key: '',
       }),
     )
 
@@ -78,8 +82,9 @@ describe('readConfig', () => {
 
     const cfg = readConfig()
     expect(cfg.duckdb_path).toBe(DEFAULT_DB)
-    expect(cfg.claude_model).toBe(DEFAULT_CLAUDE_MODEL)
+    expect(cfg.llm_model).toBe(DEFAULT_LLM_MODEL)
     expect(cfg.target_currency).toBe('EUR')
+    expect(cfg.groq_api_key).toBe('')
   })
 
   it('returns defaults when the config file contains malformed JSON', () => {
@@ -88,7 +93,7 @@ describe('readConfig', () => {
 
     const cfg = readConfig()
     expect(cfg.duckdb_path).toBe(DEFAULT_DB)
-    expect(cfg.claude_model).toBe(DEFAULT_CLAUDE_MODEL)
+    expect(cfg.llm_model).toBe(DEFAULT_LLM_MODEL)
   })
 })
 
@@ -97,8 +102,9 @@ describe('writeConfig', () => {
     const mockWrite = vi.mocked(fs.writeFileSync)
     const config = {
       duckdb_path: DEFAULT_DB,
-      claude_model: DEFAULT_CLAUDE_MODEL,
+      llm_model: DEFAULT_LLM_MODEL,
       target_currency: 'GBP',
+      groq_api_key: 'gsk_test',
     }
 
     writeConfig(config)
@@ -113,7 +119,6 @@ describe('writeConfig', () => {
 describe('resolveDataPath', () => {
   it('returns path unchanged when it already starts under cwd', () => {
     const p = path.join(CWD, 'data', 'uploads', 'resumes', 'abc.pdf')
-    // resolveDataPath does no fs check if path starts under cwd
     expect(resolveDataPath(p)).toBe(p)
   })
 
@@ -121,7 +126,6 @@ describe('resolveDataPath', () => {
     const externalPath = '/old/host/path/data/uploads/resumes/abc.pdf'
     const expectedResolved = path.join(DEFAULT_DATA_DIR, 'uploads', 'resumes', 'abc.pdf')
 
-    // existsSync: first call is from readConfig (config file check), second is the resolved path check
     vi.mocked(fs.existsSync).mockImplementation((p) => {
       if (p === expectedResolved) return true
       return false

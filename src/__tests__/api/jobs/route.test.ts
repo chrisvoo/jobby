@@ -22,7 +22,7 @@ vi.mock('@/lib/db', () => ({
 
 vi.mock('@/lib/app-config', () => ({
   resolveDataPath: (p: string) => p,
-  readConfig: vi.fn(() => ({ duckdb_path: '', claude_model: '', target_currency: 'EUR' })),
+  readConfig: vi.fn(() => ({ duckdb_path: '', llm_model: '', target_currency: 'EUR', groq_api_key: '' })),
   getDataDir: vi.fn(() => '/tmp/data'),
 }))
 

@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { getDb } from '@/lib/db'
 import { extractPdfText } from '@/lib/pdf-extractor'
-import { askClaudeJSON } from '@/lib/claude'
+import { askLLMJSON } from '@/lib/llm'
 import { generateResumePDF } from '@/lib/pdf-generator'
 import { getDataDir, resolveDataPath } from '@/lib/app-config'
 import type { ResumeData } from '@/lib/pdf-generator'
@@ -67,7 +67,7 @@ interface Change {
   reason: string
 }
 
-interface ClaudeEnhanceResponse {
+interface EnhanceResponse {
   output_filename: string
   warnings: string[]
   changes: Change[]
@@ -124,7 +124,7 @@ ${job_description.slice(0, 4000)}
 ---
 Candidate name hint (for filename): ${candidate_name ?? 'extract from resume'}`
 
-    const result = await askClaudeJSON<ClaudeEnhanceResponse>(prompt)
+    const result = await askLLMJSON<EnhanceResponse>(prompt)
 
     // Generate clean PDF from Claude's structured resume JSON
     const pdfBuffer = await generateResumePDF(result.resume)

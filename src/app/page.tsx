@@ -109,7 +109,7 @@ export default function DashboardPage() {
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
         <div className="px-6 py-4 border-b border-zinc-800">
           <h2 className="text-sm font-semibold text-zinc-100">Application Flow</h2>
-          <p className="text-xs text-zinc-500 mt-0.5">Status transition paths for your applications</p>
+          <p className="text-xs text-zinc-400 mt-0.5">Status transition paths for your applications</p>
         </div>
 
         {loading ? (
@@ -157,7 +157,7 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
         {icon}
       </div>
       <p className="text-2xl font-bold text-zinc-100">{value}</p>
-      <p className="text-xs text-zinc-500 mt-0.5">{label}</p>
+      <p className="text-xs text-zinc-400 mt-0.5">{label}</p>
     </div>
   )
 }
