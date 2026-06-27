@@ -16,7 +16,10 @@ export async function GET(req: NextRequest) {
     if (!currenciesCache || now - currenciesCachedAt > CURRENCIES_TTL_MS) {
       try {
         const res = await fetch(`${FRANKFURTER_BASE}/currencies`)
-        if (!res.ok) throw new Error(`Frankfurter error: ${res.status}`)
+        if (!res.ok) {
+          throw new Error(`Frankfurter error: ${res.status}`)
+        }
+
         // v2 may return an array of objects [{ iso_code, name, ... }]
         // or a keyed map { EUR: "Euro" } / { EUR: { name, ... } }.
         // Normalize everything to the simple { EUR: "Euro", ... } shape the UI expects.

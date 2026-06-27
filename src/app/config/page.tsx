@@ -1,13 +1,14 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
   Database,
-  Check, RotateCcw, Loader2, Bot, RefreshCw,
-  DollarSign, ChevronDown, Key, Eye, EyeOff, Activity,
+  RotateCcw, Loader2, Bot, RefreshCw,
+  DollarSign, Key, Eye, EyeOff, Activity,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { LLM_MODELS, DEFAULT_LLM_MODEL, type LLMModel } from '@/lib/llm-models'
+import { CurrencyCombobox } from '@/components/currency-combobox'
 
 // ── localStorage model cache ─────────────────────────────────────
 
@@ -79,8 +80,6 @@ function formatAge(ts: number): string {
   return d < 30 ? `${d}d ago` : 'over a month ago'
 }
 
-// ── Tier visuals ─────────────────────────────────────────────────
-
 const tierStyle: Record<LLMModel['tier'], string> = {
   high:     'bg-violet-500/15 text-violet-300 border border-violet-500/25',
   balanced: 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/25',
@@ -89,113 +88,6 @@ const tierStyle: Record<LLMModel['tier'], string> = {
 const tierLabel: Record<LLMModel['tier'], string> = {
   high: 'Powerful', balanced: 'Balanced', fast: 'Fast',
 }
-
-// ── Currency combobox ────────────────────────────────────────────
-
-interface CurrencyComboboxProps {
-  value: string
-  onChange: (code: string) => void
-  currencies: Record<string, string>
-  loading: boolean
-  id?: string
-}
-
-function CurrencyCombobox({ value, onChange, currencies, loading, id }: CurrencyComboboxProps) {
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState('')
-  const containerRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const entries = Object.entries(currencies)
-  const filtered = query
-    ? entries.filter(([code, name]) =>
-        code.toLowerCase().includes(query.toLowerCase()) ||
-        name.toLowerCase().includes(query.toLowerCase()),
-      )
-    : entries
-
-  const displayLabel = value
-    ? `${value}${currencies[value] ? ` — ${currencies[value]}` : ''}`
-    : ''
-
-  useEffect(() => {
-    function handle(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-        setQuery('')
-      }
-    }
-    document.addEventListener('mousedown', handle)
-    return () => document.removeEventListener('mousedown', handle)
-  }, [])
-
-  function select(code: string) {
-    onChange(code)
-    setOpen(false)
-    setQuery('')
-  }
-
-  return (
-    <div ref={containerRef} className="relative">
-      <button
-        id={id}
-        type="button"
-        onClick={() => {
-          setOpen((o) => !o)
-          if (!open) setTimeout(() => inputRef.current?.focus(), 50)
-        }}
-        className="w-full flex items-center justify-between gap-2 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-left transition-colors focus:outline-hidden focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 hover:border-zinc-600"
-      >
-        {loading ? (
-          <span className="flex items-center gap-2 text-zinc-500">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />Loading currencies…
-          </span>
-        ) : (
-          <span className={value ? 'text-zinc-100 font-mono' : 'text-zinc-500'}>
-            {displayLabel || 'Select a currency'}
-          </span>
-        )}
-        <ChevronDown className="w-4 h-4 text-zinc-500 shrink-0" />
-      </button>
-
-      {open && (
-        <div className="absolute z-50 mt-1 w-full bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden">
-          <div className="p-2 border-b border-zinc-800">
-            <input
-              ref={inputRef}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by code or name…"
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/50"
-            />
-          </div>
-          <ul className="max-h-56 overflow-y-auto py-1">
-            {filtered.length === 0 && (
-              <li className="px-3 py-4 text-center text-zinc-500 text-sm">No currencies found</li>
-            )}
-            {filtered.map(([code, name]) => (
-              <li key={code}>
-                <button
-                  type="button"
-                  onClick={() => select(code)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 text-sm text-left transition-colors hover:bg-zinc-800 ${
-                    code === value ? 'text-indigo-300 bg-indigo-500/10' : 'text-zinc-200'
-                  }`}
-                >
-                  <span className="font-mono w-10 shrink-0 text-zinc-400">{code}</span>
-                  <span className="truncate">{name}</span>
-                  {code === value && <Check className="w-3.5 h-3.5 ml-auto shrink-0 text-indigo-400" />}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Usage bar ────────────────────────────────────────────────────
 
 interface UsageBarProps {
   label:  string
@@ -250,8 +142,6 @@ function UsageBar({ label, bucket }: UsageBarProps) {
     </div>
   )
 }
-
-// ── Config page ──────────────────────────────────────────────────
 
 export default function ConfigPage() {
   // ── Database settings (read-only) ─────────────────────────────
@@ -669,6 +559,8 @@ export default function ConfigPage() {
             onChange={setTargetCurrency}
             currencies={currencies}
             loading={currenciesLoading}
+            placeholder="Select a currency"
+            loadingText="Loading currencies…"
           />
           <p className="text-xs text-zinc-400 mt-2">
             Used as the default &ldquo;convert to&rdquo; currency in the Utils page. Rates sourced from{' '}
