@@ -1,7 +1,7 @@
 import { DuckDBInstance } from '@duckdb/node-api'
 import path from 'path'
 import fs from 'fs'
-import { readConfig } from './app-config'
+import { defaultDuckDbPath } from './app-config'
 
 // Survive Next.js hot-reload in development
 declare global {
@@ -74,7 +74,7 @@ async function runMigrations(conn: Awaited<ReturnType<DuckDBInstance['connect']>
 }
 
 export async function getDb() {
-  const dbPath = readConfig().duckdb_path
+  const dbPath = defaultDuckDbPath()
 
   if (global.__duckdb_conn && global.__duckdb_path === dbPath) {
     await runMigrations(global.__duckdb_conn)

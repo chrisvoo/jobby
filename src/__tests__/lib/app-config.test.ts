@@ -10,7 +10,7 @@ import {
   writeConfig,
   defaultDuckDbPath,
   resolveDataPath,
-  CONFIG_FILE,
+  ENV_FILE,
 } from '@/lib/app-config'
 import { DEFAULT_LLM_MODEL } from '@/lib/llm-models'
 
@@ -18,12 +18,28 @@ const CWD = process.cwd()
 const DEFAULT_DB = path.join(CWD, 'data', 'app.db')
 const DEFAULT_DATA_DIR = path.join(CWD, 'data')
 
+// Snapshot and restore process.env around each test
+let envSnapshot: Record<string, string | undefined>
+
 beforeEach(() => {
   vi.resetAllMocks()
+  envSnapshot = {
+    GROQ_API_KEY: process.env.GROQ_API_KEY,
+    LLM_MODEL: process.env.LLM_MODEL,
+    TARGET_CURRENCY: process.env.TARGET_CURRENCY,
+  }
+  delete process.env.GROQ_API_KEY
+  delete process.env.LLM_MODEL
+  delete process.env.TARGET_CURRENCY
 })
 
 afterEach(() => {
   vi.restoreAllMocks()
+  // Restore env vars to their pre-test state
+  for (const [k, v] of Object.entries(envSnapshot)) {
+    if (v === undefined) delete process.env[k]
+    else process.env[k] = v
+  }
 })
 
 describe('defaultDuckDbPath', () => {
@@ -33,86 +49,58 @@ describe('defaultDuckDbPath', () => {
 })
 
 describe('readConfig', () => {
-  it('returns defaults when config file does not exist', () => {
-    vi.mocked(fs.existsSync).mockReturnValue(false)
-
+  it('returns defaults when env vars are not set', () => {
     const cfg = readConfig()
-    expect(cfg.duckdb_path).toBe(DEFAULT_DB)
     expect(cfg.llm_model).toBe(DEFAULT_LLM_MODEL)
     expect(cfg.target_currency).toBe('EUR')
     expect(cfg.groq_api_key).toBe('')
   })
 
-  it('returns parsed config when file exists and is valid', () => {
-    vi.mocked(fs.existsSync).mockReturnValue(true)
-    vi.mocked(fs.readFileSync).mockReturnValue(
-      JSON.stringify({
-        duckdb_path: path.join(CWD, 'data', 'custom.db'),
-        llm_model: 'qwen-qwq-32b',
-        target_currency: 'USD',
-        groq_api_key: 'gsk_test',
-      }),
-    )
+  it('reads all values from process.env', () => {
+    process.env.LLM_MODEL = 'qwen-qwq-32b'
+    process.env.TARGET_CURRENCY = 'USD'
+    process.env.GROQ_API_KEY = 'gsk_test'
 
     const cfg = readConfig()
-    expect(cfg.duckdb_path).toBe(path.join(CWD, 'data', 'custom.db'))
     expect(cfg.llm_model).toBe('qwen-qwq-32b')
     expect(cfg.target_currency).toBe('USD')
     expect(cfg.groq_api_key).toBe('gsk_test')
   })
 
-  it('falls back to default db path when stored duckdb_path is outside cwd', () => {
-    vi.mocked(fs.existsSync).mockReturnValue(true)
-    vi.mocked(fs.readFileSync).mockReturnValue(
-      JSON.stringify({
-        duckdb_path: '/some/other/absolute/path/app.db',
-        llm_model: DEFAULT_LLM_MODEL,
-        target_currency: 'EUR',
-        groq_api_key: '',
-      }),
-    )
-
+  it('uses default llm_model when LLM_MODEL is not set', () => {
+    process.env.GROQ_API_KEY = 'gsk_test'
     const cfg = readConfig()
-    expect(cfg.duckdb_path).toBe(DEFAULT_DB)
+    expect(cfg.llm_model).toBe(DEFAULT_LLM_MODEL)
   })
 
-  it('fills missing keys with defaults', () => {
-    vi.mocked(fs.existsSync).mockReturnValue(true)
-    vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({}))
-
+  it('returns empty groq_api_key when GROQ_API_KEY is not set', () => {
     const cfg = readConfig()
-    expect(cfg.duckdb_path).toBe(DEFAULT_DB)
-    expect(cfg.llm_model).toBe(DEFAULT_LLM_MODEL)
-    expect(cfg.target_currency).toBe('EUR')
     expect(cfg.groq_api_key).toBe('')
-  })
-
-  it('returns defaults when the config file contains malformed JSON', () => {
-    vi.mocked(fs.existsSync).mockReturnValue(true)
-    vi.mocked(fs.readFileSync).mockReturnValue('{ not valid json')
-
-    const cfg = readConfig()
-    expect(cfg.duckdb_path).toBe(DEFAULT_DB)
-    expect(cfg.llm_model).toBe(DEFAULT_LLM_MODEL)
   })
 })
 
 describe('writeConfig', () => {
-  it('serialises config to JSON and writes it to CONFIG_FILE', () => {
+  it('writes .env content to ENV_FILE', () => {
     const mockWrite = vi.mocked(fs.writeFileSync)
-    const config = {
-      duckdb_path: DEFAULT_DB,
-      llm_model: DEFAULT_LLM_MODEL,
-      target_currency: 'GBP',
-      groq_api_key: 'gsk_test',
-    }
+    const config = { llm_model: DEFAULT_LLM_MODEL, target_currency: 'GBP', groq_api_key: 'gsk_test' }
 
     writeConfig(config)
 
     expect(mockWrite).toHaveBeenCalledOnce()
     const [filePath, content] = mockWrite.mock.calls[0]
-    expect(filePath).toBe(CONFIG_FILE)
-    expect(JSON.parse(content as string)).toEqual(config)
+    expect(filePath).toBe(ENV_FILE)
+    expect(content).toContain('GROQ_API_KEY=gsk_test')
+    expect(content).toContain(`LLM_MODEL=${DEFAULT_LLM_MODEL}`)
+    expect(content).toContain('TARGET_CURRENCY=GBP')
+  })
+
+  it('updates process.env immediately for in-process effect', () => {
+    vi.mocked(fs.writeFileSync)
+    writeConfig({ llm_model: 'fast-model', target_currency: 'USD', groq_api_key: 'gsk_new' })
+
+    expect(process.env.LLM_MODEL).toBe('fast-model')
+    expect(process.env.TARGET_CURRENCY).toBe('USD')
+    expect(process.env.GROQ_API_KEY).toBe('gsk_new')
   })
 })
 

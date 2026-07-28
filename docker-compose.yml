@@ -1,0 +1,16 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      # ./data is the single shared layer: DB file and uploads are all stored here
+      # and visible to both Docker and local npm dev runs.
+      - ./data:/app/data
+    env_file:
+      - path: .env
+        required: false   # container still starts without .env; GROQ_API_KEY will just be unset
+    restart: unless-stopped
+
+  # Future services (background workers, scrapers, etc.) go here.
+  # They should mount the same ./data volume if they need DB or file access.

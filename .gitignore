@@ -17,8 +17,13 @@ data/uploads/resumes/*
 data/uploads/adapted/*
 !data/uploads/adapted/.gitkeep
 
-# Configuration (contains machine-specific absolute paths)
+# Configuration (contains Groq API key — never commit)
+.env
+# Keep the dist template committed
+!.env.dist
+# Legacy config files — kept so existing clones don't accidentally commit them
 jobby.config.json
+data/jobby.config.json
 
 # OS
 .DS_Store

@@ -307,7 +307,13 @@ export default function ConfigPage() {
       <div>
         <h1 className="text-2xl font-semibold text-zinc-100">Configuration</h1>
         <p className="text-zinc-500 text-sm mt-1">
-          Settings are saved in <code className="text-zinc-400 bg-zinc-800 px-1 rounded">jobby.config.json</code> at the project root.
+          Settings are saved in <code className="text-zinc-400 bg-zinc-800 px-1 rounded">.env</code> at the project root.
+          {process.env.NODE_ENV === 'production' && (
+            <span className="block mt-1 text-amber-500/80">
+              Running in Docker — changes take effect immediately here, but require{' '}
+              <code className="text-amber-400/80">docker-compose restart</code> to be picked up by other instances.
+            </span>
+          )}
         </p>
       </div>
 
@@ -401,7 +407,7 @@ export default function ConfigPage() {
             >
               console.groq.com
             </a>{' '}
-            — stored locally in <code className="text-zinc-500">jobby.config.json</code> (never committed).
+            — stored in <code className="text-zinc-500">.env</code> (gitignored, never committed).
           </p>
         </div>
       </section>

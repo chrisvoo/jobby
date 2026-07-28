@@ -6,17 +6,31 @@ Uses Groq's free API tier (Llama 3.3 70B) for AI features — no subscription re
 
 ## Prerequisites
 
-- **Node.js 20+**
 - A free **Groq API key** — sign up at [console.groq.com](https://console.groq.com/keys) (no credit card required)
+- **Node.js 20+** (local mode) **or Docker + Docker Compose** (container mode)
 
 ## Quick Start
 
+### Local (Node.js)
+
 ```bash
+cp .env.dist .env        # create your config
+# edit .env and set GROQ_API_KEY=gsk_...
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), navigate to the **Config** page, and paste your Groq API key.
+### Docker
+
+```bash
+cp .env.dist .env        # create your config
+# edit .env and set GROQ_API_KEY=gsk_...
+docker-compose up --build
+```
+
+Both modes share the same `./data/` directory (DuckDB file and uploaded PDFs), so you can switch between them freely — just don't run both at the same time (DuckDB holds a file lock).
+
+Open [http://localhost:3000](http://localhost:3000) in either mode. You can also configure settings from the **Config** page without editing `.env` directly — changes are saved back to `.env` and take effect immediately. If you switch modes after a Config page change, restart the other mode to pick up the updated `.env`.
 
 ## How it works
 
@@ -33,26 +47,29 @@ The LLM returns structured JSON for the enhanced resume; a new PDF is generated 
 
 ## Configuration
 
-All settings live in `jobby.config.json` at the project root (gitignored — never committed). They are managed via the **Config page** in the UI:
+Settings live in `.env` at the project root (gitignored — never committed). Use `.env.dist` as the template. They can also be changed at runtime via the **Config page** in the UI, which writes back to `.env`.
 
-| Setting | Description |
-|---|---|
-| `groq_api_key` | Your Groq API key (`gsk_...`) |
-| `llm_model` | Model to use for AI tasks (default: `llama-3.3-70b-versatile`) |
-| `target_currency` | Default currency for salary conversion (default: `EUR`) |
-| `duckdb_path` | Path to the DuckDB file (managed automatically) |
+| Variable | Description | Default |
+|---|---|---|
+| `GROQ_API_KEY` | Your Groq API key (`gsk_...`) | — |
+| `LLM_MODEL` | Model for AI tasks | `llama-3.3-70b-versatile` |
+| `TARGET_CURRENCY` | Default currency for salary conversion (ISO 4217) | `EUR` |
+
+The DuckDB path is managed automatically (`./data/app.db`) and is not configurable.
 
 ## Architecture
 
 ```
-npm run dev
-  └── Next.js :3000  -- UI, API routes, LLM calls, PDF generation
-
-Local data:
-  ./data/            -- DuckDB + PDFs (persists between runs, git-ignored)
+npm run dev                  docker-compose up
+  └── Next.js :3000    OR      └── Next.js :3000 (container)
+        │                              │
+        └──────────┬───────────────────┘
+                   │
+              ./data/          -- shared volume: DuckDB + uploaded PDFs
+              .env             -- shared config: API key, model, currency
 
 External:
-  api.groq.com       -- Llama 3.3 70B inference (free tier)
+  api.groq.com                 -- Llama 3.3 70B inference (free tier)
 ```
 
 ## Stack

@@ -2,11 +2,12 @@ import fs from 'fs'
 import path from 'path'
 import { DEFAULT_LLM_MODEL } from './llm-models'
 
-// Stored at project root — never committed (see .gitignore)
-export const CONFIG_FILE = path.join(process.cwd(), 'jobby.config.json')
+// Config is stored in .env at the project root (gitignored).
+// Next.js loads it into process.env at startup; writeConfig() updates process.env
+// in-memory for immediate effect and writes .env for persistence across restarts.
+export const ENV_FILE = path.join(process.cwd(), '.env')
 
 export interface AppConfig {
-  duckdb_path: string
   llm_model: string
   target_currency: string
   groq_api_key: string
@@ -17,33 +18,31 @@ export function defaultDuckDbPath(): string {
 }
 
 export function readConfig(): AppConfig {
-  const fallback = defaultDuckDbPath()
-  try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      const raw = fs.readFileSync(CONFIG_FILE, 'utf-8')
-      const parsed = JSON.parse(raw) as Partial<AppConfig> & { claude_model?: string }
-      let dbPath = parsed.duckdb_path ?? fallback
-      const cwd = process.cwd()
-      if (dbPath !== fallback && !dbPath.startsWith(cwd + path.sep)) {
-        dbPath = fallback
-      }
-      return {
-        duckdb_path: dbPath,
-        llm_model: parsed.llm_model ?? DEFAULT_LLM_MODEL,
-        target_currency: parsed.target_currency ?? 'EUR',
-        groq_api_key: parsed.groq_api_key ?? '',
-      }
-    }
-  } catch {}
-  return { duckdb_path: fallback, llm_model: DEFAULT_LLM_MODEL, target_currency: 'EUR', groq_api_key: '' }
+  return {
+    llm_model: process.env.LLM_MODEL || DEFAULT_LLM_MODEL,
+    target_currency: process.env.TARGET_CURRENCY || 'EUR',
+    groq_api_key: process.env.GROQ_API_KEY || '',
+  }
 }
 
 export function writeConfig(config: AppConfig): void {
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2))
+  // Update process.env immediately — current process picks up the change without restart
+  process.env.GROQ_API_KEY = config.groq_api_key
+  process.env.LLM_MODEL = config.llm_model
+  process.env.TARGET_CURRENCY = config.target_currency
+
+  // Persist to .env — docker-compose restart and future npm run dev pick it up
+  const content = [
+    `GROQ_API_KEY=${config.groq_api_key}`,
+    `LLM_MODEL=${config.llm_model}`,
+    `TARGET_CURRENCY=${config.target_currency}`,
+    '',
+  ].join('\n')
+  fs.writeFileSync(ENV_FILE, content)
 }
 
 export function getDataDir(): string {
-  return path.dirname(readConfig().duckdb_path)
+  return path.dirname(defaultDuckDbPath())
 }
 
 /**
