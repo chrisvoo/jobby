@@ -30,8 +30,10 @@ function makeRequest(params: Record<string, string> = {}): NextRequest {
   return new NextRequest(url, { method: 'GET' })
 }
 
-const RECENT_DATE = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()  // 10 days ago
-const OLD_DATE = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()     // 60 days ago
+// Anchored to the fake timer date used in beforeEach so ghosting math is consistent
+const FAKE_NOW = new Date('2026-05-02T10:00:00Z').getTime()
+const RECENT_DATE = new Date(FAKE_NOW - 10 * 24 * 60 * 60 * 1000).toISOString()  // 10 days before fake now
+const OLD_DATE    = new Date(FAKE_NOW - 60 * 24 * 60 * 60 * 1000).toISOString()  // 60 days before fake now
 
 beforeEach(() => {
   vi.clearAllMocks()

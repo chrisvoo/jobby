@@ -29,8 +29,19 @@ const defaultConfig = {
   groq_api_key: 'gsk_test_key',
 }
 
+const fakeHeaders = { get: () => null } as unknown as Headers
+
 function mockResponse(content: string) {
-  createMock.mockResolvedValue({ choices: [{ message: { content } }] })
+  const data = { choices: [{ message: { content } }] }
+  createMock.mockReturnValue({
+    withResponse: () => Promise.resolve({ data, response: { headers: fakeHeaders } }),
+  })
+}
+
+function mockError(err: Error) {
+  createMock.mockReturnValue({
+    withResponse: () => Promise.reject(err),
+  })
 }
 
 beforeEach(() => {
@@ -52,7 +63,9 @@ describe('askLLM', () => {
   })
 
   it('returns empty string when choices are empty', async () => {
-    createMock.mockResolvedValue({ choices: [] })
+    createMock.mockReturnValue({
+      withResponse: () => Promise.resolve({ data: { choices: [] }, response: { headers: fakeHeaders } }),
+    })
     const result = await askLLM('test prompt')
     expect(result).toBe('')
   })
@@ -63,7 +76,7 @@ describe('askLLM', () => {
   })
 
   it('throws when the API call fails', async () => {
-    createMock.mockRejectedValue(new Error('Network error'))
+    mockError(new Error('Network error'))
     await expect(askLLM('test')).rejects.toThrow('Network error')
   })
 })

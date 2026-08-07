@@ -20,6 +20,8 @@ function rowToJob(row: Record<string, unknown>): Job {
   }
 }
 
+const SORT_COLS = new Set(['company', 'status', 'applied_at'])
+
 export async function GET(req: NextRequest) {
   try {
     const conn = await getDb()
@@ -28,15 +30,25 @@ export async function GET(req: NextRequest) {
     const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1)
     const pageSize = Math.max(1, Math.min(100, parseInt(url.searchParams.get('pageSize') ?? '10', 10) || 10))
     const statusFilter = url.searchParams.get('status') as JobStatus | null
+    const rawSort = url.searchParams.get('sort') ?? 'applied_at'
+    const sort = SORT_COLS.has(rawSort) ? rawSort : 'applied_at'
+    const order = url.searchParams.get('order') === 'asc' ? 'ASC' : 'DESC'
+    const search = url.searchParams.get('search')?.trim() ?? ''
     const offset = (page - 1) * pageSize
 
-    const where = statusFilter ? `WHERE status = '${statusFilter.replace(/'/g, "''")}'` : ''
+    const conditions: string[] = []
+    if (statusFilter) conditions.push(`status = '${statusFilter.replace(/'/g, "''")}'`)
+    if (search) {
+      const q = search.replace(/'/g, "''")
+      conditions.push(`(LOWER(company) LIKE LOWER('%${q}%') OR LOWER(notes) LIKE LOWER('%${q}%'))`)
+    }
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
 
     const countResult = await conn.runAndReadAll(`SELECT COUNT(*) AS cnt FROM jobs ${where}`)
     const total = Number((countResult.getRowObjects()[0] as Record<string, unknown>).cnt)
 
     const result = await conn.runAndReadAll(
-      `SELECT * FROM jobs ${where} ORDER BY applied_at DESC LIMIT ${pageSize} OFFSET ${offset}`,
+      `SELECT * FROM jobs ${where} ORDER BY ${sort} ${order}, id ASC LIMIT ${pageSize} OFFSET ${offset}`,
     )
     const jobs = result.getRowObjects().map(rowToJob)
 

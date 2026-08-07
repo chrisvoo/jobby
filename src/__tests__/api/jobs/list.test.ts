@@ -145,6 +145,67 @@ describe('GET /api/jobs', () => {
     expect(body.statusCounts.all).toBe(10)
   })
 
+  it('uses default sort (applied_at DESC) when no sort params given', async () => {
+    setupMocks()
+
+    await GET(makeGetRequest())
+
+    const selectSql = mockRunAndReadAll.mock.calls[1][0] as string
+    expect(selectSql).toMatch(/ORDER BY applied_at DESC, id ASC/)
+  })
+
+  it('applies sort and order params to ORDER BY clause', async () => {
+    setupMocks()
+
+    await GET(makeGetRequest({ sort: 'company', order: 'asc' }))
+
+    const selectSql = mockRunAndReadAll.mock.calls[1][0] as string
+    expect(selectSql).toMatch(/ORDER BY company ASC, id ASC/)
+  })
+
+  it('falls back to applied_at for unknown sort column (injection guard)', async () => {
+    setupMocks()
+
+    await GET(makeGetRequest({ sort: "applied_at'; DROP TABLE jobs; --", order: 'desc' }))
+
+    const selectSql = mockRunAndReadAll.mock.calls[1][0] as string
+    expect(selectSql).toMatch(/ORDER BY applied_at DESC/)
+    expect(selectSql).not.toContain('DROP TABLE')
+  })
+
+  it('applies search filter as LIKE on company and notes', async () => {
+    setupMocks()
+
+    await GET(makeGetRequest({ search: 'acme' }))
+
+    const countSql = mockRunAndReadAll.mock.calls[0][0] as string
+    const selectSql = mockRunAndReadAll.mock.calls[1][0] as string
+    expect(countSql).toContain("LOWER(company) LIKE LOWER('%acme%')")
+    expect(countSql).toContain("LOWER(notes) LIKE LOWER('%acme%')")
+    expect(selectSql).toContain("LOWER(company) LIKE LOWER('%acme%')")
+  })
+
+  it('combines status filter and search with AND', async () => {
+    setupMocks()
+
+    await GET(makeGetRequest({ status: 'applied', search: 'corp' }))
+
+    const countSql = mockRunAndReadAll.mock.calls[0][0] as string
+    expect(countSql).toContain("status = 'applied'")
+    expect(countSql).toContain("LOWER(company) LIKE LOWER('%corp%')")
+    expect(countSql).toMatch(/status.*AND.*LOWER|LOWER.*AND.*status/)
+  })
+
+  it('escapes single quotes in search term', async () => {
+    setupMocks()
+
+    await GET(makeGetRequest({ search: "O'Brien" }))
+
+    const countSql = mockRunAndReadAll.mock.calls[0][0] as string
+    expect(countSql).toContain("O''Brien")
+    expect(countSql).not.toContain("O'Brien'")
+  })
+
   it('returns 500 on DB error', async () => {
     mockGetDb.mockRejectedValueOnce(new Error('DB down'))
 
