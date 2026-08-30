@@ -95,8 +95,7 @@ describe('GET /api/jobs', () => {
 
     const sqlCalls = mockRunAndReadAll.mock.calls
     const selectSql = sqlCalls[1][0] as string
-    expect(selectSql).toContain('LIMIT 5')
-    expect(selectSql).toContain('OFFSET 5')
+    expect(selectSql).toContain('__rn > 5 AND __rn <= 10')
   })
 
   it('applies status filter to SQL queries', async () => {

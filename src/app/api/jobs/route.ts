@@ -47,8 +47,16 @@ export async function GET(req: NextRequest) {
     const countResult = await conn.runAndReadAll(`SELECT COUNT(*) AS cnt FROM jobs ${where}`)
     const total = Number((countResult.getRowObjects()[0] as Record<string, unknown>).cnt)
 
+    // ponytail: avoids DuckDB TopN bug where ORDER BY col DESC, id ASC LIMIT n OFFSET m
+    // produces a different sort order than the full sort, causing rows to fall into the
+    // OFFSET window and disappear. ROW_NUMBER() forces a complete window sort.
     const result = await conn.runAndReadAll(
-      `SELECT * FROM jobs ${where} ORDER BY ${sort} ${order}, id ASC LIMIT ${pageSize} OFFSET ${offset}`,
+      `SELECT * FROM (
+        SELECT *, ROW_NUMBER() OVER (ORDER BY ${sort} ${order}, id ASC) AS __rn
+        FROM jobs ${where}
+      ) AS paged
+      WHERE __rn > ${offset} AND __rn <= ${offset + pageSize}
+      ORDER BY __rn`,
     )
     const jobs = result.getRowObjects().map(rowToJob)
 

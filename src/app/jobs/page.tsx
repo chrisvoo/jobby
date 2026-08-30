@@ -32,6 +32,7 @@ export default function JobsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
@@ -52,20 +53,24 @@ export default function JobsPage() {
   }, [search])
 
   const fetchJobs = useCallback(async (p: number, ps: number, status: 'all' | JobStatus, s: SortCol, o: 'asc' | 'desc', q: string) => {
+    abortRef.current?.abort()
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
     setLoading(true)
     try {
       const params = new URLSearchParams({ page: String(p), pageSize: String(ps), sort: s, order: o })
       if (status !== 'all') params.set('status', status)
       if (q) params.set('search', q)
-      const res = await fetch(`/api/jobs?${params}`)
+      const res = await fetch(`/api/jobs?${params}`, { signal: ctrl.signal })
       const data = await res.json()
       setJobs(Array.isArray(data.jobs) ? data.jobs : [])
       setTotal(data.total ?? 0)
       setStatusCounts(data.statusCounts ?? {})
-    } catch {
+    } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') return
       setJobs([])
     } finally {
-      setLoading(false)
+      if (!ctrl.signal.aborted) setLoading(false)
     }
   }, [])
 
