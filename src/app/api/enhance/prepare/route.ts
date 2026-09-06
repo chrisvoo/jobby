@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import fs from 'fs'
 import { getDb } from '@/lib/db'
 import { extractPdfText } from '@/lib/pdf-extractor'
-import { askLLMJSON } from '@/lib/llm'
-import { resolveDataPath } from '@/lib/app-config'
+import { askLLMJSON, resolveValidModel } from '@/lib/llm'
+import { resolveDataPath, readConfig, writeConfig } from '@/lib/app-config'
 import type { ResumeData } from '@/lib/types'
 
 const MINIMAL_PROMPT = `You are an expert resume writer optimising resumes for both human readers and Applicant Tracking Systems (ATS).
@@ -91,6 +91,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Resume file missing on disk' }, { status: 404 })
     }
 
+    const config = readConfig()
+    const { model, switchedFrom } = await resolveValidModel(config.groq_api_key, config.llm_model)
+    if (switchedFrom) {
+      writeConfig({ ...config, llm_model: model })
+    }
+
     const resumeText = await extractPdfText(resumePath)
 
     const prompt = `${MINIMAL_PROMPT}
@@ -106,13 +112,14 @@ ${job_description}
 ---
 Candidate name hint (for filename): ${candidate_name ?? 'extract from resume'}`
 
-    const result = await askLLMJSON<MinimalResponse>(prompt)
+    const result = await askLLMJSON<MinimalResponse>(prompt, model)
     return NextResponse.json({
       template: 'minimal',
       output_filename: result.output_filename,
       warnings: result.warnings ?? [],
       changes: result.changes ?? [],
       resume: result.resume,
+      ...(switchedFrom ? { model_switched: { from: switchedFrom, to: model } } : {}),
     })
   } catch (err) {
     console.error(err)

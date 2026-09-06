@@ -19,6 +19,7 @@ interface PrepareResult {
   warnings: string[]
   changes: Array<{ section: string; original_text: string; replacement_text: string; reason: string }>
   resume: ResumeData
+  model_switched?: { from: string; to: string }
 }
 
 const CURRENCY_OPTIONS = [
@@ -310,6 +311,9 @@ export default function ResumePage() {
       const data: PrepareResult = await res.json()
       setPreview(data)
       setDraftResume(data.resume)
+      if (data.model_switched) {
+        toast.warning(`Model "${data.model_switched.from}" is no longer available — switched to "${data.model_switched.to}" and saved`)
+      }
       toast.success('Resume ready — review and generate PDF')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Enhancement failed')

@@ -17,7 +17,8 @@ vi.mock('@/lib/db', () => ({
 
 vi.mock('@/lib/app-config', () => ({
   resolveDataPath: (p: string) => p,
-  readConfig: vi.fn(() => ({ duckdb_path: '', llm_model: '', target_currency: 'EUR', groq_api_key: '' })),
+  readConfig: vi.fn(() => ({ duckdb_path: '', llm_model: 'test-model', target_currency: 'EUR', groq_api_key: 'gsk_test', ghosting_days: 45 })),
+  writeConfig: vi.fn(),
 }))
 
 vi.mock('fs', () => ({
@@ -30,8 +31,10 @@ vi.mock('@/lib/pdf-extractor', () => ({
 }))
 
 const mockAskLLMJSON = vi.fn()
+const mockResolveValidModel = vi.fn(() => Promise.resolve({ model: 'test-model' }))
 vi.mock('@/lib/llm', () => ({
   askLLMJSON: (...args: unknown[]) => mockAskLLMJSON(...args),
+  resolveValidModel: (...args: unknown[]) => mockResolveValidModel(...args),
 }))
 
 import { POST } from '@/app/api/enhance/prepare/route'

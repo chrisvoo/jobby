@@ -154,6 +154,7 @@ export default function ConfigPage() {
   const [apiKeyEditing, setApiKeyEditing] = useState(false)
 
   // ── LLM model settings ─────────────────────────────────────────
+  const [configLoaded, setConfigLoaded]   = useState(false)
   const [llmModel, setLlmModel]           = useState(DEFAULT_LLM_MODEL)
   const [savedModel, setSavedModel]       = useState(DEFAULT_LLM_MODEL)
   const [models, setModels]               = useState<LLMModel[]>(LLM_MODELS)
@@ -211,8 +212,8 @@ export default function ConfigPage() {
       setModelsSource(data.source)
       if (data.source === 'fallback') {
         toast.warning(data.error ?? 'Could not reach Groq API — using built-in list')
-      } else {
-        if (force) toast.success(`Model list refreshed (${data.models.length} models)`)
+      } else if (force) {
+        toast.success(`Model list refreshed (${data.models.length} models)`)
       }
     } catch {
       toast.error('Failed to fetch model list')
@@ -242,6 +243,33 @@ export default function ConfigPage() {
     }
   }, [])
 
+  // ── Auto-switch stale model when live list is available ───────
+  // Uses a useEffect (not logic inside fetchModels) so it always reads the
+  // *current* savedModel state — fetchModels has [] deps and would otherwise
+  // capture a stale closure of the initial default value.
+  // configLoaded gates the check so we never act on the initial DEFAULT_LLM_MODEL
+  // placeholder before the real config arrives from the server.
+  useEffect(() => {
+    if (!configLoaded || modelsSource !== 'live' || !models.length || !savedModel) return
+    if (models.find((m) => m.id === savedModel)) return
+
+    // Use the static list for tier — heuristics on the model ID are unreliable.
+    // Unknown models default to 'balanced' (safest middle ground).
+    const tier = LLM_MODELS.find((m) => m.id === savedModel)?.tier ?? 'balanced'
+    const sameTier = models.filter((m) => m.tier === tier)
+    const replacement = (sameTier[0] ?? models.find((m) => m.tier === 'balanced') ?? models[0])?.id
+    if (!replacement) return
+
+    setLlmModel(replacement)
+    setSavedModel(replacement)
+    fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ llm_model: replacement }),
+    }).catch(() => {})
+    toast.warning(`Model "${savedModel}" is no longer available — switched to "${replacement}"`)
+  }, [models, savedModel, modelsSource, configLoaded])
+
   // ── Load config + model list on mount ─────────────────────────
   useEffect(() => {
     fetch('/api/config')
@@ -256,6 +284,7 @@ export default function ConfigPage() {
         setSavedApiKey(data.groq_api_key ?? '')
         setGhostingDays(data.ghosting_days ?? 45)
         setSavedGhostingDays(data.ghosting_days ?? 45)
+        setConfigLoaded(true)
       })
       .catch(() => {})
 
