@@ -341,8 +341,9 @@ export default function ConfigPage() {
     ghostingDays !== savedGhostingDays
 
   return (
-    <div className="space-y-8 max-w-2xl">
-      <div>
+    <div className="max-w-5xl">
+      {/* ── Page header ── */}
+      <div className="mb-8">
         <h1 className="text-2xl font-semibold text-zinc-100">Configuration</h1>
         <p className="text-zinc-500 text-sm mt-1">
           Settings are saved in <code className="text-zinc-400 bg-zinc-800 px-1 rounded">.env</code> at the project root.
@@ -355,333 +356,347 @@ export default function ConfigPage() {
         </p>
       </div>
 
-      {/* ── Database (read-only) ── */}
-      <section className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-zinc-800 flex items-center gap-3">
-          <Database className="w-4 h-4 text-yellow-400" />
-          <div>
-            <h2 className="text-sm font-semibold text-zinc-100">Database</h2>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              All data is stored in the <code className="text-zinc-400">./data/</code> directory and persists between runs.
-            </p>
-          </div>
-        </div>
-        <div className="px-5 py-5">
-          <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">
-            DuckDB File Path
-          </label>
-          <div className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm font-mono text-zinc-400 select-all">
-            {duckdbPath || '—'}
-          </div>
-          <p className="text-xs text-zinc-400 mt-2">
-            This path is managed automatically. Data is stored under <code className="text-zinc-500">./data/</code> relative to the project root.
-          </p>
-        </div>
-      </section>
+      {/* ── Two-column grid on md+, single column on small ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
 
-      {/* ── Groq API Key ── */}
-      <section className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-zinc-800 flex items-center gap-3">
-          <Key className="w-4 h-4 text-orange-400" />
-          <div>
-            <h2 className="text-sm font-semibold text-zinc-100">Groq API Key</h2>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              Required for AI resume enhancement and job description parsing
-            </p>
-          </div>
-        </div>
-        <div className="px-5 py-5">
-          {apiKeyEditing ? (
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
+        {/* ══ General settings column ══ */}
+        <div className="space-y-6">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">General</h2>
+
+          {/* ── Database (read-only) ── */}
+          <section className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-zinc-800 flex items-center gap-3">
+              <Database className="w-4 h-4 text-yellow-400" />
+              <div>
+                <h3 className="text-sm font-semibold text-zinc-100">Database</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  All data is stored in the <code className="text-zinc-400">./data/</code> directory and persists between runs.
+                </p>
+              </div>
+            </div>
+            <div className="px-5 py-5">
+              <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">
+                DuckDB File Path
+              </label>
+              <div className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm font-mono text-zinc-400 select-all">
+                {duckdbPath || '—'}
+              </div>
+              <p className="text-xs text-zinc-400 mt-2">
+                This path is managed automatically. Data is stored under <code className="text-zinc-500">./data/</code> relative to the project root.
+              </p>
+            </div>
+          </section>
+
+          {/* ── Ghosting Threshold ── */}
+          <section className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-zinc-800 flex items-center gap-3">
+              <Ghost className="w-4 h-4 text-fuchsia-400" />
+              <div>
+                <h3 className="text-sm font-semibold text-zinc-100">Ghosting Threshold</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Days of inactivity before an &ldquo;Applied&rdquo; job is considered ghosted
+                </p>
+              </div>
+            </div>
+            <div className="px-5 py-5">
+              <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">
+                Days without activity
+              </label>
+              <div className="flex items-center gap-3">
                 <input
-                  type={apiKeyVisible ? 'text' : 'password'}
-                  value={groqApiKey}
-                  onChange={(e) => setGroqApiKey(e.target.value)}
-                  placeholder="gsk_..."
-                  autoFocus
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 pr-10 text-sm font-mono text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={ghostingDays}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10)
+                    if (Number.isFinite(v) && v > 0) setGhostingDays(v)
+                  }}
+                  className="w-28 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm font-mono text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
                 />
-                <button
-                  type="button"
-                  onClick={() => setApiKeyVisible((v) => !v)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                <span className="text-sm text-zinc-400">days</span>
+              </div>
+              <p className="text-xs text-zinc-400 mt-2">
+                Default is 45 days. Jobs in any non-terminal status (not rejected or offer) with no activity beyond this
+                threshold appear as &ldquo;Ghosted&rdquo; on the dashboard.
+              </p>
+            </div>
+          </section>
+
+          {/* ── Currency ── */}
+          <section className="bg-zinc-900 border border-zinc-800 rounded-xl">
+            <div className="px-5 py-4 border-b border-zinc-800 flex items-center gap-3 rounded-t-xl">
+              <DollarSign className="w-4 h-4 text-emerald-400" />
+              <div>
+                <h3 className="text-sm font-semibold text-zinc-100">Currency</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">Default target currency for salary conversion</p>
+              </div>
+            </div>
+            <div className="px-5 py-5">
+              <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">
+                Target Currency
+              </label>
+              <CurrencyCombobox
+                value={targetCurrency}
+                onChange={setTargetCurrency}
+                currencies={currencies}
+                loading={currenciesLoading}
+                placeholder="Select a currency"
+                loadingText="Loading currencies…"
+              />
+              <p className="text-xs text-zinc-400 mt-2">
+                Used as the default &ldquo;convert to&rdquo; currency in the Utils page. Rates sourced from{' '}
+                <a
+                  href="https://www.frankfurter.dev"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-zinc-500 hover:text-zinc-300 underline"
                 >
-                  {apiKeyVisible
-                    ? <EyeOff className="w-4 h-4" />
-                    : <Eye className="w-4 h-4" />
-                  }
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => { setGroqApiKey(savedApiKey); setApiKeyEditing(false) }}
-                className="text-xs text-zinc-400 hover:text-zinc-300 px-2 py-2 transition-colors"
-              >
-                Cancel
-              </button>
+                  Frankfurter
+                </a>{' '}
+                (ECB + 40+ central banks, no API key required).
+              </p>
             </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <div className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm font-mono text-zinc-400">
-                {savedApiKey ? maskedKey(savedApiKey) : <span className="text-zinc-600 italic">Not set</span>}
-              </div>
-              <button
-                type="button"
-                onClick={() => setApiKeyEditing(true)}
-                className="text-xs text-zinc-400 hover:text-zinc-200 border border-zinc-700 hover:border-zinc-500 px-3 py-2 rounded-lg transition-colors"
-              >
-                {savedApiKey ? 'Change' : 'Set key'}
-              </button>
-            </div>
-          )}
-          <p className="text-xs text-zinc-400 mt-2">
-            Free API key from{' '}
-            <a
-              href="https://console.groq.com/keys"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-zinc-500 hover:text-zinc-300 underline"
-            >
-              console.groq.com
-            </a>{' '}
-            — stored in <code className="text-zinc-500">.env</code> (gitignored, never committed).
-          </p>
+          </section>
         </div>
-      </section>
 
-      {/* ── Groq Usage Limits ── */}
-      <section className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Activity className="w-4 h-4 text-violet-400 shrink-0" />
-            <div>
-              <h2 className="text-sm font-semibold text-zinc-100">Usage Limits</h2>
-              {groqLimits ? (
-                <p className="text-xs text-zinc-400 mt-0.5">checked {formatAge(groqLimits.capturedAt)}</p>
+        {/* ══ AI settings column ══ */}
+        <div className="space-y-6">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">AI</h2>
+
+          {/* ── Groq API Key ── */}
+          <section className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-zinc-800 flex items-center gap-3">
+              <Key className="w-4 h-4 text-orange-400" />
+              <div>
+                <h3 className="text-sm font-semibold text-zinc-100">Groq API Key</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Required for AI resume enhancement and job description parsing
+                </p>
+              </div>
+            </div>
+            <div className="px-5 py-5">
+              {apiKeyEditing ? (
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type={apiKeyVisible ? 'text' : 'password'}
+                      value={groqApiKey}
+                      onChange={(e) => setGroqApiKey(e.target.value)}
+                      placeholder="gsk_..."
+                      autoFocus
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 pr-10 text-sm font-mono text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setApiKeyVisible((v) => !v)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                    >
+                      {apiKeyVisible
+                        ? <EyeOff className="w-4 h-4" />
+                        : <Eye className="w-4 h-4" />
+                      }
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setGroqApiKey(savedApiKey); setApiKeyEditing(false) }}
+                    className="text-xs text-zinc-400 hover:text-zinc-300 px-2 py-2 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
               ) : (
-                <p className="text-xs text-zinc-400 mt-0.5">Rate limits for the current minute window</p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm font-mono text-zinc-400">
+                    {savedApiKey ? maskedKey(savedApiKey) : <span className="text-zinc-600 italic">Not set</span>}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setApiKeyEditing(true)}
+                    className="text-xs text-zinc-400 hover:text-zinc-200 border border-zinc-700 hover:border-zinc-500 px-3 py-2 rounded-lg transition-colors"
+                  >
+                    {savedApiKey ? 'Change' : 'Set key'}
+                  </button>
+                </div>
               )}
+              <p className="text-xs text-zinc-400 mt-2">
+                Free API key from{' '}
+                <a
+                  href="https://console.groq.com/keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-zinc-500 hover:text-zinc-300 underline"
+                >
+                  console.groq.com
+                </a>{' '}
+                — stored in <code className="text-zinc-500">.env</code> (gitignored, never committed).
+              </p>
             </div>
-          </div>
-          <button
-            onClick={fetchLimits}
-            disabled={limitsLoading || !savedApiKey}
-            title={savedApiKey ? 'Fetch current rate limits from Groq' : 'Set a Groq API key first'}
-            className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 disabled:opacity-50 transition-colors px-2 py-1.5 rounded-lg hover:bg-zinc-800"
-          >
-            {limitsLoading
-              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              : <RefreshCw className="w-3.5 h-3.5" />
-            }
-            Check now
-          </button>
-        </div>
+          </section>
 
-        <div className="px-5 py-5 space-y-5">
-          {!savedApiKey ? (
-            <p className="text-sm text-zinc-600 italic">Configure your Groq API key first.</p>
-          ) : !groqLimits ? (
-            <p className="text-sm text-zinc-500">
-              No data yet — enhance a resume or click <span className="text-zinc-300">Check now</span>.
-            </p>
-          ) : (
-            <>
-              <UsageBar label="Tokens / min"   bucket={groqLimits.tokens} />
-              <UsageBar label="Requests / min" bucket={groqLimits.requests} />
-            </>
-          )}
-        </div>
-      </section>
+          {/* ── Groq Usage Limits ── */}
+          <section className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Activity className="w-4 h-4 text-violet-400 shrink-0" />
+                <div>
+                  <h3 className="text-sm font-semibold text-zinc-100">Usage Limits</h3>
+                  {groqLimits ? (
+                    <p className="text-xs text-zinc-400 mt-0.5">checked {formatAge(groqLimits.capturedAt)}</p>
+                  ) : (
+                    <p className="text-xs text-zinc-400 mt-0.5">Rate limits for the current minute window</p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={fetchLimits}
+                disabled={limitsLoading || !savedApiKey}
+                title={savedApiKey ? 'Fetch current rate limits from Groq' : 'Set a Groq API key first'}
+                className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 disabled:opacity-50 transition-colors px-2 py-1.5 rounded-lg hover:bg-zinc-800"
+              >
+                {limitsLoading
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <RefreshCw className="w-3.5 h-3.5" />
+                }
+                Check now
+              </button>
+            </div>
 
-      {/* ── AI Model ── */}
-      <section className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Bot className="w-4 h-4 text-indigo-400 shrink-0" />
-            <div>
-              <h2 className="text-sm font-semibold text-zinc-100">AI Model</h2>
-              {modelsLastSync ? (
-                <p className="text-xs mt-0.5">
-                  <span className={modelsSource === 'live' ? 'text-emerald-500/80' : 'text-amber-500/80'}>
-                    {modelsSource === 'live' ? 'Live' : 'Fallback'}
-                  </span>
-                  <span className="text-zinc-600"> · synced {formatAge(modelsLastSync)} from Groq API</span>
+            <div className="px-5 py-5 space-y-5">
+              {!savedApiKey ? (
+                <p className="text-sm text-zinc-600 italic">Configure your Groq API key first.</p>
+              ) : !groqLimits ? (
+                <p className="text-sm text-zinc-500">
+                  No data yet — enhance a resume or click <span className="text-zinc-300">Check now</span>.
                 </p>
               ) : (
-                <p className="text-xs text-zinc-400 mt-0.5">Which model Jobby uses for AI tasks</p>
+                <>
+                  <UsageBar label="Tokens / min"   bucket={groqLimits.tokens} />
+                  <UsageBar label="Requests / min" bucket={groqLimits.requests} />
+                </>
               )}
             </div>
-          </div>
-          <button
-            onClick={() => fetchModels(true)}
-            disabled={modelsLoading}
-            title="Refresh model list from Groq API"
-            className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 disabled:opacity-50 transition-colors px-2 py-1.5 rounded-lg hover:bg-zinc-800"
-          >
-            {modelsLoading
-              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              : <RefreshCw className="w-3.5 h-3.5" />
-            }
-            Refresh
-          </button>
-        </div>
+          </section>
 
-        <div className="px-5 py-4">
-          {modelsLoading && models.length === 0 ? (
-            <div className="py-8 flex items-center justify-center gap-2 text-zinc-500 text-sm">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Fetching model list…
+          {/* ── AI Model ── */}
+          <section className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Bot className="w-4 h-4 text-indigo-400 shrink-0" />
+                <div>
+                  <h3 className="text-sm font-semibold text-zinc-100">AI Model</h3>
+                  {modelsLastSync ? (
+                    <p className="text-xs mt-0.5">
+                      <span className={modelsSource === 'live' ? 'text-emerald-500/80' : 'text-amber-500/80'}>
+                        {modelsSource === 'live' ? 'Live' : 'Fallback'}
+                      </span>
+                      <span className="text-zinc-600"> · synced {formatAge(modelsLastSync)} from Groq API</span>
+                    </p>
+                  ) : (
+                    <p className="text-xs text-zinc-400 mt-0.5">Which model Jobby uses for AI tasks</p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => fetchModels(true)}
+                disabled={modelsLoading}
+                title="Refresh model list from Groq API"
+                className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 disabled:opacity-50 transition-colors px-2 py-1.5 rounded-lg hover:bg-zinc-800"
+              >
+                {modelsLoading
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <RefreshCw className="w-3.5 h-3.5" />
+                }
+                Refresh
+              </button>
             </div>
-          ) : (
-            <div className="overflow-y-auto max-h-[24rem] space-y-2 pr-1">
-              {models.map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => setLlmModel(m.id)}
-                  className={`w-full flex items-start gap-4 px-4 py-3 rounded-lg border transition-all text-left ${
-                    llmModel === m.id
-                      ? 'bg-indigo-600/10 border-indigo-500/50 ring-1 ring-inset ring-indigo-500/30'
-                      : 'bg-zinc-800/40 border-zinc-700/60 hover:border-zinc-600 hover:bg-zinc-800'
-                  }`}
-                >
-                  <span className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                    llmModel === m.id ? 'border-indigo-400' : 'border-zinc-600'
-                  }`}>
-                    {llmModel === m.id && <span className="w-2 h-2 rounded-full bg-indigo-400" />}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-sm font-medium ${llmModel === m.id ? 'text-zinc-100' : 'text-zinc-300'}`}>
-                        {m.label}
-                      </span>
-                      {m.isDefault && (
-                        <span className="text-[10px] font-semibold uppercase tracking-wide bg-zinc-700 text-zinc-400 px-1.5 py-0.5 rounded">
-                          default
-                        </span>
-                      )}
-                      <span className={`text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${tierStyle[m.tier]}`}>
-                        {tierLabel[m.tier]}
-                      </span>
-                    </div>
-                    <p className="text-xs text-zinc-400 mt-0.5">{m.description}</p>
-                  </div>
-                </button>
-              ))}
 
-              {!modelsLoading && !models.find((m) => m.id === llmModel) && llmModel && (
-                <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-zinc-700/60 bg-zinc-800/40">
-                  <span className="mt-0.5 w-4 h-4 rounded-full border-2 border-indigo-400 flex items-center justify-center shrink-0">
-                    <span className="w-2 h-2 rounded-full bg-indigo-400" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-medium text-zinc-300">{llmModel}</p>
-                    <p className="text-xs text-zinc-400">Custom model — not in the current list</p>
-                  </div>
+            <div className="px-5 py-4">
+              {modelsLoading && models.length === 0 ? (
+                <div className="py-8 flex items-center justify-center gap-2 text-zinc-500 text-sm">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Fetching model list…
+                </div>
+              ) : (
+                <div className="overflow-y-auto max-h-[24rem] space-y-2 pr-1">
+                  {models.map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => setLlmModel(m.id)}
+                      className={`w-full flex items-start gap-4 px-4 py-3 rounded-lg border transition-all text-left ${
+                        llmModel === m.id
+                          ? 'bg-indigo-600/10 border-indigo-500/50 ring-1 ring-inset ring-indigo-500/30'
+                          : 'bg-zinc-800/40 border-zinc-700/60 hover:border-zinc-600 hover:bg-zinc-800'
+                      }`}
+                    >
+                      <span className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                        llmModel === m.id ? 'border-indigo-400' : 'border-zinc-600'
+                      }`}>
+                        {llmModel === m.id && <span className="w-2 h-2 rounded-full bg-indigo-400" />}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-sm font-medium ${llmModel === m.id ? 'text-zinc-100' : 'text-zinc-300'}`}>
+                            {m.label}
+                          </span>
+                          {m.isDefault && (
+                            <span className="text-[10px] font-semibold uppercase tracking-wide bg-zinc-700 text-zinc-400 px-1.5 py-0.5 rounded">
+                              default
+                            </span>
+                          )}
+                          <span className={`text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${tierStyle[m.tier]}`}>
+                            {tierLabel[m.tier]}
+                          </span>
+                        </div>
+                        <p className="text-xs text-zinc-400 mt-0.5">{m.description}</p>
+                      </div>
+                    </button>
+                  ))}
+
+                  {!modelsLoading && !models.find((m) => m.id === llmModel) && llmModel && (
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-zinc-700/60 bg-zinc-800/40">
+                      <span className="mt-0.5 w-4 h-4 rounded-full border-2 border-indigo-400 flex items-center justify-center shrink-0">
+                        <span className="w-2 h-2 rounded-full bg-indigo-400" />
+                      </span>
+                      <div>
+                        <p className="text-sm font-medium text-zinc-300">{llmModel}</p>
+                        <p className="text-xs text-zinc-400">Custom model — not in the current list</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
+          </section>
+        </div>
+
+        {/* ── Unified save (spans both columns) ── */}
+        <div className="md:col-span-2 flex items-center justify-end gap-3">
+          <button
+            onClick={save}
+            disabled={saving || !isDirty}
+            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+          >
+            {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            {saving ? 'Saving…' : 'Save changes'}
+          </button>
+          {isDirty && (
+            <button
+              onClick={() => {
+                setLlmModel(savedModel)
+                setTargetCurrency(savedCurrency)
+                setGroqApiKey(savedApiKey)
+                setGhostingDays(savedGhostingDays)
+                setApiKeyEditing(false)
+              }}
+              className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Reset
+            </button>
           )}
         </div>
-      </section>
-
-      {/* ── Ghosting Threshold ── */}
-      <section className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-zinc-800 flex items-center gap-3">
-          <Ghost className="w-4 h-4 text-fuchsia-400" />
-          <div>
-            <h2 className="text-sm font-semibold text-zinc-100">Ghosting Threshold</h2>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              Days of inactivity before an &ldquo;Applied&rdquo; job is considered ghosted
-            </p>
-          </div>
-        </div>
-        <div className="px-5 py-5">
-          <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">
-            Days without activity
-          </label>
-          <div className="flex items-center gap-3">
-            <input
-              type="number"
-              min={1}
-              max={365}
-              value={ghostingDays}
-              onChange={(e) => {
-                const v = parseInt(e.target.value, 10)
-                if (Number.isFinite(v) && v > 0) setGhostingDays(v)
-              }}
-              className="w-28 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm font-mono text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
-            />
-            <span className="text-sm text-zinc-400">days</span>
-          </div>
-          <p className="text-xs text-zinc-400 mt-2">
-            Default is 45 days. Jobs in any non-terminal status (not rejected or offer) with no activity beyond this
-            threshold appear as &ldquo;Ghosted&rdquo; on the dashboard.
-          </p>
-        </div>
-      </section>
-
-      {/* ── Currency ── */}
-      <section className="bg-zinc-900 border border-zinc-800 rounded-xl">
-        <div className="px-5 py-4 border-b border-zinc-800 flex items-center gap-3 rounded-t-xl">
-          <DollarSign className="w-4 h-4 text-emerald-400" />
-          <div>
-            <h2 className="text-sm font-semibold text-zinc-100">Currency</h2>
-            <p className="text-xs text-zinc-400 mt-0.5">Default target currency for salary conversion</p>
-          </div>
-        </div>
-        <div className="px-5 py-5">
-          <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">
-            Target Currency
-          </label>
-          <CurrencyCombobox
-            value={targetCurrency}
-            onChange={setTargetCurrency}
-            currencies={currencies}
-            loading={currenciesLoading}
-            placeholder="Select a currency"
-            loadingText="Loading currencies…"
-          />
-          <p className="text-xs text-zinc-400 mt-2">
-            Used as the default &ldquo;convert to&rdquo; currency in the Utils page. Rates sourced from{' '}
-            <a
-              href="https://www.frankfurter.dev"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-zinc-500 hover:text-zinc-300 underline"
-            >
-              Frankfurter
-            </a>{' '}
-            (ECB + 40+ central banks, no API key required).
-          </p>
-        </div>
-      </section>
-
-      {/* ── Unified save ── */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={save}
-          disabled={saving || !isDirty}
-          className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
-        >
-          {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-          {saving ? 'Saving…' : 'Save changes'}
-        </button>
-        {isDirty && (
-          <button
-            onClick={() => {
-              setLlmModel(savedModel)
-              setTargetCurrency(savedCurrency)
-              setGroqApiKey(savedApiKey)
-              setGhostingDays(savedGhostingDays)
-              setApiKeyEditing(false)
-            }}
-            className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Reset
-          </button>
-        )}
       </div>
     </div>
   )
