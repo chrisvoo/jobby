@@ -17,7 +17,9 @@ export async function GET(req: NextRequest) {
              CAST(jsh.to_status AS VARCHAR) AS to_status,
              jsh.changed_at,
              j.applied_at,
-             CAST(j.status AS VARCHAR) AS current_status
+             CAST(j.status AS VARCHAR) AS current_status,
+             j.company,
+             j.role
       FROM job_status_history jsh
       JOIN jobs j ON j.id = jsh.job_id
       WHERE j.applied_at >= NOW() - INTERVAL ${months} MONTH
@@ -30,9 +32,11 @@ export async function GET(req: NextRequest) {
       changed_at: unknown
       applied_at: unknown
       current_status: string
+      company: string
+      role: string
     }>
 
-    const jobMap = new Map<string, { statuses: string[]; lastActivityAt: string; currentStatus: string }>()
+    const jobMap = new Map<string, { statuses: string[]; lastActivityAt: string; currentStatus: string; company: string; role: string; appliedAt: string }>()
 
     for (const row of rows) {
       let entry = jobMap.get(row.job_id)
@@ -41,6 +45,9 @@ export async function GET(req: NextRequest) {
           statuses: [],
           lastActivityAt: toISO(row.changed_at),
           currentStatus: row.current_status,
+          company: row.company,
+          role: row.role,
+          appliedAt: toISO(row.applied_at),
         }
         jobMap.set(row.job_id, entry)
       }
@@ -54,27 +61,30 @@ export async function GET(req: NextRequest) {
     // differs from "applied", the job progressed at an unknown date -- we use "now"
     // to avoid falsely marking it as ghosted.
     const jobsWithoutHistory = await conn.runAndReadAll(`
-      SELECT j.id, j.applied_at, CAST(j.status AS VARCHAR) AS status
+      SELECT j.id, j.applied_at, CAST(j.status AS VARCHAR) AS status, j.company, j.role
       FROM jobs j
       WHERE j.applied_at >= NOW() - INTERVAL ${months} MONTH
         AND j.id NOT IN (SELECT DISTINCT job_id FROM job_status_history)
     `)
-    for (const row of jobsWithoutHistory.getRowObjects() as Array<{ id: string; applied_at: unknown; status: string }>) {
+    for (const row of jobsWithoutHistory.getRowObjects() as Array<{ id: string; applied_at: unknown; status: string; company: string; role: string }>) {
       if (!jobMap.has(row.id)) {
         const hasProgressed = row.status !== 'applied'
         jobMap.set(row.id, {
           statuses: hasProgressed ? ['applied', row.status] : [row.status],
           lastActivityAt: hasProgressed ? new Date().toISOString() : toISO(row.applied_at),
           currentStatus: row.status,
+          company: row.company,
+          role: row.role,
+          appliedAt: toISO(row.applied_at),
         })
       }
     }
 
     const now = Date.now()
-    const pathCounts = new Map<string, number>()
+    const pathGroups = new Map<string, { count: number; jobs: { id: string; company: string; role: string; applied_at: string }[] }>()
     const stats = { total: 0, interview: 0, offer: 0, rejected: 0, ghosted: 0 }
 
-    for (const [, entry] of jobMap) {
+    for (const [jobId, entry] of jobMap) {
       stats.total++
       const cs = entry.currentStatus as JobStatus
       if (cs === 'hr_interview' || cs === 'tech_interview') stats.interview++
@@ -93,13 +103,21 @@ export async function GET(req: NextRequest) {
 
       const displayPath = isGhosted ? [...statuses, 'ghosted'] : statuses
       const key = JSON.stringify(displayPath)
-      pathCounts.set(key, (pathCounts.get(key) ?? 0) + 1)
+      const group = pathGroups.get(key)
+      const jobEntry = { id: jobId, company: entry.company, role: entry.role, applied_at: entry.appliedAt }
+      if (group) {
+        group.count++
+        group.jobs.push(jobEntry)
+      } else {
+        pathGroups.set(key, { count: 1, jobs: [jobEntry] })
+      }
     }
 
-    const paths = Array.from(pathCounts.entries())
-      .map(([key, count]) => ({
+    const paths = Array.from(pathGroups.entries())
+      .map(([key, group]) => ({
         path: JSON.parse(key) as string[],
-        count,
+        count: group.count,
+        jobs: group.jobs,
       }))
       .sort((a, b) => a.path.length - b.path.length || b.count - a.count)
 
