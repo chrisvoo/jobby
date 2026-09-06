@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb, toISO } from '@/lib/db'
+import { readConfig } from '@/lib/app-config'
 import type { JobStatus } from '@/lib/types'
 
 const VALID_MONTHS = new Set([3, 6, 12])
-const FORTY_FIVE_DAYS_MS = 45 * 24 * 60 * 60 * 1000
 
 export async function GET(req: NextRequest) {
   try {
@@ -80,6 +80,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const { ghosting_days } = readConfig()
+    const ghostingMs = ghosting_days * 24 * 60 * 60 * 1000
     const now = Date.now()
     const pathGroups = new Map<string, { count: number; jobs: { id: string; company: string; role: string; applied_at: string }[] }>()
     const stats = { total: 0, interview: 0, offer: 0, rejected: 0, ghosted: 0 }
@@ -97,7 +99,7 @@ export async function GET(req: NextRequest) {
       const isGhosted =
         cs !== 'rejected' &&
         cs !== 'offer' &&
-        now - new Date(entry.lastActivityAt).getTime() > FORTY_FIVE_DAYS_MS
+        now - new Date(entry.lastActivityAt).getTime() > ghostingMs
 
       if (isGhosted) stats.ghosted++
 
@@ -121,7 +123,7 @@ export async function GET(req: NextRequest) {
       }))
       .sort((a, b) => a.path.length - b.path.length || b.count - a.count)
 
-    return NextResponse.json({ months, stats, paths })
+    return NextResponse.json({ months, ghosting_days, stats, paths })
   } catch (err) {
     console.error(err)
     return NextResponse.json({ error: 'Failed to load dashboard data' }, { status: 500 })

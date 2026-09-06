@@ -27,10 +27,12 @@ beforeEach(() => {
     GROQ_API_KEY: process.env.GROQ_API_KEY,
     LLM_MODEL: process.env.LLM_MODEL,
     TARGET_CURRENCY: process.env.TARGET_CURRENCY,
+    GHOSTING_DAYS: process.env.GHOSTING_DAYS,
   }
   delete process.env.GROQ_API_KEY
   delete process.env.LLM_MODEL
   delete process.env.TARGET_CURRENCY
+  delete process.env.GHOSTING_DAYS
 })
 
 afterEach(() => {
@@ -82,7 +84,7 @@ describe('readConfig', () => {
 describe('writeConfig', () => {
   it('writes .env content to ENV_FILE', () => {
     const mockWrite = vi.mocked(fs.writeFileSync)
-    const config = { llm_model: DEFAULT_LLM_MODEL, target_currency: 'GBP', groq_api_key: 'gsk_test' }
+    const config = { llm_model: DEFAULT_LLM_MODEL, target_currency: 'GBP', groq_api_key: 'gsk_test', ghosting_days: 30 }
 
     writeConfig(config)
 
@@ -92,15 +94,17 @@ describe('writeConfig', () => {
     expect(content).toContain('GROQ_API_KEY=gsk_test')
     expect(content).toContain(`LLM_MODEL=${DEFAULT_LLM_MODEL}`)
     expect(content).toContain('TARGET_CURRENCY=GBP')
+    expect(content).toContain('GHOSTING_DAYS=30')
   })
 
   it('updates process.env immediately for in-process effect', () => {
     vi.mocked(fs.writeFileSync)
-    writeConfig({ llm_model: 'fast-model', target_currency: 'USD', groq_api_key: 'gsk_new' })
+    writeConfig({ llm_model: 'fast-model', target_currency: 'USD', groq_api_key: 'gsk_new', ghosting_days: 60 })
 
     expect(process.env.LLM_MODEL).toBe('fast-model')
     expect(process.env.TARGET_CURRENCY).toBe('USD')
     expect(process.env.GROQ_API_KEY).toBe('gsk_new')
+    expect(process.env.GHOSTING_DAYS).toBe('60')
   })
 })
 

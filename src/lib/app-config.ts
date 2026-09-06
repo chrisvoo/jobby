@@ -7,10 +7,13 @@ import { DEFAULT_LLM_MODEL } from './llm-models'
 // in-memory for immediate effect and writes .env for persistence across restarts.
 export const ENV_FILE = path.join(process.cwd(), '.env')
 
+export const DEFAULT_GHOSTING_DAYS = 45
+
 export interface AppConfig {
   llm_model: string
   target_currency: string
   groq_api_key: string
+  ghosting_days: number
 }
 
 export function defaultDuckDbPath(): string {
@@ -18,10 +21,12 @@ export function defaultDuckDbPath(): string {
 }
 
 export function readConfig(): AppConfig {
+  const parsed = parseInt(process.env.GHOSTING_DAYS ?? '', 10)
   return {
     llm_model: process.env.LLM_MODEL || DEFAULT_LLM_MODEL,
     target_currency: process.env.TARGET_CURRENCY || 'EUR',
     groq_api_key: process.env.GROQ_API_KEY || '',
+    ghosting_days: Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_GHOSTING_DAYS,
   }
 }
 
@@ -30,12 +35,14 @@ export function writeConfig(config: AppConfig): void {
   process.env.GROQ_API_KEY = config.groq_api_key
   process.env.LLM_MODEL = config.llm_model
   process.env.TARGET_CURRENCY = config.target_currency
+  process.env.GHOSTING_DAYS = String(config.ghosting_days)
 
   // Persist to .env — docker-compose restart and future npm run dev pick it up
   const content = [
     `GROQ_API_KEY=${config.groq_api_key}`,
     `LLM_MODEL=${config.llm_model}`,
     `TARGET_CURRENCY=${config.target_currency}`,
+    `GHOSTING_DAYS=${config.ghosting_days}`,
     '',
   ].join('\n')
   fs.writeFileSync(ENV_FILE, content)

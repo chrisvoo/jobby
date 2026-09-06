@@ -17,6 +17,7 @@ vi.mock('@/lib/app-config', () => ({
     duckdb_path: '',
     target_currency: 'EUR',
     groq_api_key: 'gsk_test_key',
+    ghosting_days: 45,
   })),
 }))
 
@@ -27,6 +28,7 @@ const defaultConfig = {
   duckdb_path: '',
   target_currency: 'EUR',
   groq_api_key: 'gsk_test_key',
+  ghosting_days: 45,
 }
 
 const fakeHeaders = { get: () => null } as unknown as Headers

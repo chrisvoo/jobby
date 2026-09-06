@@ -20,6 +20,7 @@ interface PathEntry {
 
 interface DashboardData {
   months: number
+  ghosting_days: number
   stats: { total: number; interview: number; offer: number; rejected: number; ghosted: number }
   paths: PathEntry[]
 }
@@ -56,6 +57,7 @@ export default function DashboardPage() {
 
   const stats = data?.stats ?? { total: 0, interview: 0, offer: 0, rejected: 0, ghosted: 0 }
   const paths = data?.paths ?? []
+  const ghostingDays = data?.ghosting_days ?? 45
 
   return (
     <div className="space-y-8">
@@ -146,7 +148,7 @@ export default function DashboardPage() {
                           {status === 'ghosted' ? (
                             <span
                               className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium border border-dashed bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/30"
-                              title="No activity for 45+ days"
+                              title={`No activity for ${ghostingDays}+ days`}
                             >
                               <span className="text-sm leading-none">👻</span>
                               Ghosted

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   Database,
   RotateCcw, Loader2, Bot, RefreshCw,
-  DollarSign, Key, Eye, EyeOff, Activity,
+  DollarSign, Key, Eye, EyeOff, Activity, Ghost,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { LLM_MODELS, DEFAULT_LLM_MODEL, type LLMModel } from '@/lib/llm-models'
@@ -161,6 +161,10 @@ export default function ConfigPage() {
   const [modelsLastSync, setModelsLastSync] = useState<number | null>(null)
   const [modelsSource, setModelsSource]     = useState<'live' | 'fallback' | null>(null)
 
+  // ── Ghosting threshold ─────────────────────────────────────────
+  const [ghostingDays, setGhostingDays]     = useState(45)
+  const [savedGhostingDays, setSavedGhostingDays] = useState(45)
+
   // ── Currency settings ──────────────────────────────────────────
   const [targetCurrency, setTargetCurrency] = useState('EUR')
   const [savedCurrency, setSavedCurrency]   = useState('EUR')
@@ -250,6 +254,8 @@ export default function ConfigPage() {
         setSavedCurrency(data.target_currency ?? 'EUR')
         setGroqApiKey(data.groq_api_key ?? '')
         setSavedApiKey(data.groq_api_key ?? '')
+        setGhostingDays(data.ghosting_days ?? 45)
+        setSavedGhostingDays(data.ghosting_days ?? 45)
       })
       .catch(() => {})
 
@@ -273,6 +279,7 @@ export default function ConfigPage() {
           llm_model: llmModel,
           target_currency: targetCurrency,
           groq_api_key: groqApiKey,
+          ghosting_days: ghostingDays,
         }),
       })
       const data = await res.json()
@@ -280,6 +287,7 @@ export default function ConfigPage() {
       setSavedModel(llmModel)
       setSavedCurrency(targetCurrency)
       setSavedApiKey(groqApiKey)
+      setSavedGhostingDays(ghostingDays)
       setApiKeyEditing(false)
       toast.success('Configuration saved')
       // Refresh model list after saving key (key may have changed)
@@ -300,7 +308,8 @@ export default function ConfigPage() {
   const isDirty =
     llmModel !== savedModel ||
     targetCurrency !== savedCurrency ||
-    groqApiKey !== savedApiKey
+    groqApiKey !== savedApiKey ||
+    ghostingDays !== savedGhostingDays
 
   return (
     <div className="space-y-8 max-w-2xl">
@@ -547,6 +556,42 @@ export default function ConfigPage() {
         </div>
       </section>
 
+      {/* ── Ghosting Threshold ── */}
+      <section className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-zinc-800 flex items-center gap-3">
+          <Ghost className="w-4 h-4 text-fuchsia-400" />
+          <div>
+            <h2 className="text-sm font-semibold text-zinc-100">Ghosting Threshold</h2>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              Days of inactivity before an &ldquo;Applied&rdquo; job is considered ghosted
+            </p>
+          </div>
+        </div>
+        <div className="px-5 py-5">
+          <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">
+            Days without activity
+          </label>
+          <div className="flex items-center gap-3">
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={ghostingDays}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10)
+                if (Number.isFinite(v) && v > 0) setGhostingDays(v)
+              }}
+              className="w-28 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm font-mono text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+            />
+            <span className="text-sm text-zinc-400">days</span>
+          </div>
+          <p className="text-xs text-zinc-400 mt-2">
+            Default is 45 days. Jobs in any non-terminal status (not rejected or offer) with no activity beyond this
+            threshold appear as &ldquo;Ghosted&rdquo; on the dashboard.
+          </p>
+        </div>
+      </section>
+
       {/* ── Currency ── */}
       <section className="bg-zinc-900 border border-zinc-800 rounded-xl">
         <div className="px-5 py-4 border-b border-zinc-800 flex items-center gap-3 rounded-t-xl">
@@ -599,6 +644,7 @@ export default function ConfigPage() {
               setLlmModel(savedModel)
               setTargetCurrency(savedCurrency)
               setGroqApiKey(savedApiKey)
+              setGhostingDays(savedGhostingDays)
               setApiKeyEditing(false)
             }}
             className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
