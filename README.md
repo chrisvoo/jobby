@@ -1,8 +1,9 @@
 # Jobby
 
-Personal job application tracker with AI-powered resume enhancement.
+![Intro image](./assets/fachri-ersan-jobby.svg)
+<div style="text-align: center; margin-top: -15px; margin-bottom: 15px"><i>Image by <a href="https://unsplash.com/illustrations/person-with-megaphone-in-workspace-ausGZ7ZC8X0">Fachri Esran</a></i></div>
 
-Uses Groq's free API tier (Llama 3.3 70B) for AI features — no subscription required, just a free API key.
+Personal job application tracker with AI-powered resume enhancement. Uses Groq's free API tier for AI features — no subscription required, just a free API key.
 
 ## Prerequisites
 
@@ -57,21 +58,6 @@ Settings live in `.env` at the project root (gitignored — never committed). Us
 
 The DuckDB path is managed automatically (`./data/app.db`) and is not configurable.
 
-## Architecture
-
-```
-npm run dev                  docker-compose up
-  └── Next.js :3000    OR      └── Next.js :3000 (container)
-        │                              │
-        └──────────┬───────────────────┘
-                   │
-              ./data/          -- shared volume: DuckDB + uploaded PDFs
-              .env             -- shared config: API key, model, currency
-
-External:
-  api.groq.com                 -- Llama 3.3 70B inference (free tier)
-```
-
 ## Stack
 
 | Layer | Technology |
@@ -79,16 +65,5 @@ External:
 | Frontend + API | Next.js (React, Turbopack) |
 | Database | DuckDB (embedded, file-based) |
 | PDF text extraction | unpdf (Mozilla PDF.js) |
-| AI | Groq SDK + Llama 3.3 70B (free tier) |
+| AI | Groq SDK (free tier) |
 | PDF generation | @react-pdf/renderer |
-
-## Project structure
-
-```
-scripts/          fix-missing-history.ts (DuckDB maintenance utility)
-src/
-  app/            Pages and API routes
-  components/     Sidebar, forms, dialogs, editors
-  lib/            DuckDB, Groq LLM wrapper, PDF tools, config
-data/             DuckDB file + uploaded PDFs (created on first run, git-ignored)
-```
